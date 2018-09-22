@@ -20,6 +20,7 @@ knitr::opts_chunk$set(echo = TRUE)
 # Copyright (C) 2018 by Cornell University. All Rights Reserved.
 # 
 # Written by Hugo Fernando Maia Milan.
+# Adapted from an original code written by Michael T. Gorczyca. Released under this license with authorization from Michael T. Gorczyca.
 # 
 # Free for educational, research and non-profit purposes.
 # Refer to the license file for details.
