@@ -1,0 +1,938 @@
+---
+title: "data_analysis"
+author: "Hugo Milan"
+date: "May 19, 2018"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# ANABHT - ANAlytical solver for steady-state BioHeat Transfer problems in 1D
+# 
+# Copyright (C) 2018 by Cornell University. All Rights Reserved.
+# 
+# Written by Hugo Fernando Maia Milan.
+# 
+# Free for educational, research and non-profit purposes.
+# Refer to the license file for details.
+#
+# 
+# File:   EnsembleCrossValidation.rmd
+# Author: Hugo Fernando Maia Milan
+# Email:  hugofernando@gmail.com
+#
+# Created on May 15, 2018.
+#
+#
+# Function description:
+# Plots ensemble cross validation
+#
+
+library("plot3D")
+library(rmatio) #read.mat
+# Setting the directory
+setwd("~/OneDrive/Cornell/Publications/2018/Piglets 2013/code/V05/R/Plots")
+```
+
+```{r}
+# Naive Bagging
+naiveBaggingKM = read.mat("../../ensembleData/naiveBaggingKM.mat")
+ensembleSize = seq(1, 1000)
+# size 643 x 499
+MSE.color = "darkslategray"
+LL.color = "firebrick1"
+
+MSE.line = 1
+LL.line = 2
+
+par(mar = c(4, 4, 1, 4))
+plot(naiveBaggingKM$MSEBagging[,7], type = "l", xlab = "Ensemble size", ylab = expression(paste("Mean squared error ("^{o},"C" ^{2}, ")", sep = "")), cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line)
+grid()
+
+lines(naiveBaggingKM$MSEBagging[,7], lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+legend(400, 2.35, c("MSE", "LL"), pch = c(15, 15), cex = 1.4,
+       col = c(MSE.color, LL.color), 
+       lty = c(MSE.line, LL.line),
+       lwd = c(3, 3, 3),
+       horiz = T)
+
+par(new = T)
+plot(-naiveBaggingKM$LLBagging[,7], type = "l", xlab = "", ylab = "", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = LL.color, lty = LL.line, log = "y", bty = "n", ylim = c(1e3, 3e6), axes = F)
+
+axis(4, at = c(1e3, 1e4, 1e5, 1e6),  cex.axis = 1.4)
+axis(4, at = c(seq(2e2, 9e2, 1e2), seq(2e3, 9e3, 1e3), seq(2e4, 9e4, 1e4), seq(2e5, 9e5, 1e5), seq(2e6, 5e6, 1e6)), labels = F,  cex.axis = 1.4)
+mtext("Negative Log-Likelihood", side = 4, cex = 1.6, line=2.5)
+
+# minimum Cross-validation MSE was
+minMSENaiveBaggingKM = min(naiveBaggingKM$MSEBagging[,7])
+# for position
+minMSENaiveBaggingKMPosition = which( minMSENaiveBaggingKM == naiveBaggingKM$MSEBagging[,7])
+# and log-likelihood
+minMSENaiveBaggingKMLL = naiveBaggingKM$LLBagging[minMSENaiveBaggingKMPosition, 7]
+
+# Calculating AIC and BIC
+AICNaiveBaggingKM = 2*ensembleSize - 2*naiveBaggingKM$LLBagging[,7]
+plot(AICNaiveBaggingKM, type = 'l', log='y', xlab = "Ensemble size", ylab = "AIC", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line)
+# n = 130 in total. n = 104 for each cross-validation
+BICNaiveBaggingKM = log(104)*ensembleSize - 2*naiveBaggingKM$LLBagging[,7]
+plot(BICNaiveBaggingKM, type = 'l', log='y', xlab = "Ensemble size", ylab = "BIC", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+# Select the group that:
+# 1) minimizes MSE: group 4
+which.min(naiveBaggingKM$MSEBagging[,7])
+# 2) maximizes LL: group 1000
+which.max(naiveBaggingKM$LLBagging[,7])
+# 3) minimizes AIC: group 983
+which.min(AICNaiveBaggingKM)
+# 4) minimizes BIC: group 535
+which.min(BICNaiveBaggingKM)
+```
+
+```{r}
+# Random Bagging
+randomBaggingKM = read.mat("../../ensembleData/randomBaggingKM.mat")
+
+# size 643 x 499
+MSE.color = "darkslategray"
+LL.color = "firebrick1"
+
+MSE.line = 1
+LL.line = 2
+
+par(mar = c(4, 4, 1, 4))
+plot(randomBaggingKM$MSERandomBagging[,7], type = "l", xlab = "#Trial", ylab = expression(paste("Mean squared error ("^{o},"C" ^{2}, ")", sep = "")), cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line)
+grid()
+
+lines(randomBaggingKM$MSERandomBagging[,7], lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+legend(0, 6.5, c("MSE", "LL"), pch = c(15, 15), cex = 1.4,
+       col = c(MSE.color, LL.color), 
+       lty = c(MSE.line, LL.line),
+       lwd = c(3, 3, 3))
+
+par(new = T)
+plot(-randomBaggingKM$LLRandomBagging[,7], type = "l", xlab = "", ylab = "", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = LL.color, lty = LL.line, log = "y", bty = "n", ylim = c(1e1, 2e5), axes = F)
+
+axis(4, at = c(1e1, 1e2, 1e3, 1e4, 1e5),  cex.axis = 1.4)
+axis(4, at = c(seq(2, 9, 1), seq(2e1, 9e1, 1e1), seq(2e2, 9e2, 1e2), seq(2e3, 9e3, 1e3), seq(2e4, 9e4, 1e4), seq(2e5, 9e5, 1e5)), labels = F,  cex.axis = 1.4)
+mtext("Negative Log-Likelihood", side = 4, cex = 1.6, line=2.5)
+
+# minimum Cross-validation MSE was
+minMSERandomBaggingKM = min(randomBaggingKM$MSERandomBagging[,7])
+# for position
+minMSERandomBaggingKMPosition = which( minMSERandomBaggingKM == randomBaggingKM$MSERandomBagging[,7])
+# and log-likelihood
+minMSERandomBaggingKMLL = randomBaggingKM$LLRandomBagging[minMSERandomBaggingKMPosition, 7]
+# with
+minMSERandomBaggingNumberOfSets = randomBaggingKM$randomGroupsMSE[[minMSERandomBaggingKMPosition]][[1]]
+minMSERandomBaggingSets = randomBaggingKM$randomGroupsMSE[[minMSERandomBaggingKMPosition]][[2]]
+
+# maximum cross-validation log-likelihood was
+maxLLRandomBaggingKM = max(randomBaggingKM$LLRandomBagging[,7])
+# for position
+maxLLRandomBaggingKMPosition = which( maxLLRandomBaggingKM == randomBaggingKM$LLRandomBagging[,7])
+# and MSE
+maxLLRandomBaggingKMMSE = randomBaggingKM$MSERandomBagging[maxLLRandomBaggingKMPosition, 7]
+# with
+maxLLRandomBaggingNumberOfSets = randomBaggingKM$randomGroupsMSE[[maxLLRandomBaggingKMPosition]][[1]]
+maxLLRandomBaggingSets = randomBaggingKM$randomGroupsMSE[[maxLLRandomBaggingKMPosition]][[2]]
+
+
+# Calculating AIC and BIC
+allSizesRandomBaggingKM = 0
+for (ii in 1:nrow(randomBaggingKM$LLRandomBagging)){
+  allSizesRandomBaggingKM[ii] = randomBaggingKM$randomGroupsMSE[[ii]][[1]]
+}
+AICRandomBaggingKM = 2*allSizesRandomBaggingKM - 2*randomBaggingKM$LLRandomBagging[,7]
+plot(AICRandomBaggingKM, type = 'l', log='y', xlab = "#Trial", ylab = "AIC", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line)
+# n = 130 in total. n = 104 for each cross-validation
+BICRandomBaggingKM = log(104)*allSizesRandomBaggingKM - 2*randomBaggingKM$LLRandomBagging[,7]
+plot(BICRandomBaggingKM, type = 'l', log='y', xlab = "#Trial", ylab = "BIC", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+# Select the group that:
+# 1) minimizes MSE: group 2556, 4 sets
+which.min(randomBaggingKM$MSERandomBagging[,7])
+randomBaggingKM$randomGroupsMSE[[2556]][[1]]
+# 2) maximizes LL: group 349, 45 sets
+which.max(randomBaggingKM$LLRandomBagging[,7])
+randomBaggingKM$randomGroupsMSE[[349]][[1]]
+# 3) minimizes AIC: group 4044, 7 sets
+which.min(AICRandomBaggingKM)
+randomBaggingKM$randomGroupsMSE[[4044]][[1]]
+# 4) minimizes BIC: group 4044, 7 sets
+which.min(BICRandomBaggingKM)
+randomBaggingKM$randomGroupsMSE[[4044]][[1]]
+
+```
+
+
+```{r}
+# greedy Bagging
+greedyBaggingKM = read.mat("../../ensembleData/greedyBaggingKM.mat")
+
+# size 643 x 499
+lambdaVector = c(0, 10^seq(-4, -1, 0.25), seq(0.2, 0.8, 0.3), 1 - 10^seq(-1, -4, -0.25), 1)
+ensembleSize = seq(1, 1000)
+
+# These plots are very difficulty to interpret, mainly due to a big change in scale
+greedyBaggingMSEKM.matrix = matrix( greedyBaggingKM$MSEGreedyBagging[,13,], ncol = length(lambdaVector), byrow = F)
+image2D(greedyBaggingMSEKM.matrix,
+        colkey = list(cex.axis = 1.4), x = ensembleSize, y = lambdaVector,
+        xlab = "Ensemble size",
+        ylab = expression(lambda),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+
+greedyBaggingLLKM.matrix = matrix( greedyBaggingKM$LLGreedyBagging[,7,], ncol = length(lambdaVector), byrow = F)
+image2D(greedyBaggingLLKM.matrix,
+        colkey = list(cex.axis = 1.4), x = ensembleSize, y = lambdaVector,
+        xlab = "Ensemble size",
+        ylab = expression(lambda),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+
+# trying something else.
+MSEGreedyBaggingMinimumGivenLambda = 0
+LLGreedyBaggingMaximumGivenLambda = 0
+ObjGreedyBaggingMinimumGivenLambda = 0
+AICGreedyBaggingMinimumGivenLambda = 0
+BICGreedyBaggingMinimumGivenLambda = 0
+for (ii in 1:length(lambdaVector)){
+  MSEGreedyBaggingMinimumGivenLambda[ii] = min(greedyBaggingKM$MSEGreedyBagging[,13,ii], na.rm = T)
+  LLGreedyBaggingMaximumGivenLambda[ii] = max(greedyBaggingKM$LLGreedyBagging[,7,ii], na.rm = T)
+  ObjGreedyBaggingMinimumGivenLambda[ii] = min( lambdaVector[ii]*greedyBaggingKM$MSEGreedyBagging[,13,ii]
+                                                + (lambdaVector[ii] - 1)*greedyBaggingKM$LLGreedyBagging[,7,ii], na.rm = T)
+  AICGreedyBaggingMinimumGivenLambda[ii] = min(2*ensembleSize - 2*greedyBaggingKM$LLGreedyBagging[,7,ii], na.rm = T)
+  # n = 130 in total. n = 104 for each cross-validation
+  BICGreedyBaggingMinimumGivenLambda[ii] = min(log(104)*ensembleSize - 2*greedyBaggingKM$LLGreedyBagging[,7,ii], na.rm = T)
+}
+# some plots to see what we got
+MSE.color = "darkslategray"
+LL.color = "firebrick1"
+
+MSE.line = 1
+LL.line = 2
+
+par(mar = c(4, 4, 1, 4))
+plot(lambdaVector, MSEGreedyBaggingMinimumGivenLambda, type = "l", xlab = expression(lambda), ylab = expression(paste("Mean squared error ("^{o},"C" ^{2}, ")", sep = "")), cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+plot(lambdaVector, -LLGreedyBaggingMaximumGivenLambda, type = "l", xlab = expression(lambda), ylab = "Negative Log-Likelihood", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = LL.color, lty = LL.line)
+
+plot(lambdaVector, ObjGreedyBaggingMinimumGivenLambda, type = "l", xlab = expression(lambda), ylab = "Objective function", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+plot(lambdaVector, AICGreedyBaggingMinimumGivenLambda, type = "l", xlab = expression(lambda), ylab = "AIC", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+plot(lambdaVector, BICGreedyBaggingMinimumGivenLambda, type = "l", xlab = expression(lambda), ylab = "BIC", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+MSEGreedyBaggingMinimumGivenSize = 0
+LLGreedyBaggingMaximumGivenSize = 0
+ObjGreedyBaggingMinimumGivenSize = 0
+AICGreedyBaggingMinimumGivenSize = 0
+BICGreedyBaggingMinimumGivenSize = 0
+for (ii in 1:length(ensembleSize)){
+  MSEGreedyBaggingMinimumGivenSize[ii] = min(greedyBaggingKM$MSEGreedyBagging[ii,13,], na.rm = T)
+  LLGreedyBaggingMaximumGivenSize[ii] = max(greedyBaggingKM$LLGreedyBagging[ii,7,])
+  ObjGreedyBaggingMinimumGivenSize[ii] = min( lambdaVector*greedyBaggingKM$MSEGreedyBagging[ii,13,]
+                                                + (lambdaVector - 1)*greedyBaggingKM$LLGreedyBagging[ii,7,])
+  AICGreedyBaggingMinimumGivenSize[ii] = min(2*ii - 2*greedyBaggingKM$LLGreedyBagging[ii,7,])
+  # n = 130 in total. n = 104 for each cross-validation
+  BICGreedyBaggingMinimumGivenSize[ii] = min(log(104)*ii - 2*greedyBaggingKM$LLGreedyBagging[ii,7,])
+}
+# some plots to see what we got
+plot(ensembleSize, MSEGreedyBaggingMinimumGivenSize, type = "l", xlab = "Ensemble size", ylab = expression(paste("Mean squared error ("^{o},"C" ^{2}, ")", sep = "")), cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+plot(ensembleSize, -LLGreedyBaggingMaximumGivenSize, type = "l", xlab = "Ensemble size", ylab = "Negative Log-Likelihood", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = LL.color, lty = LL.line)
+
+plot(ensembleSize, ObjGreedyBaggingMinimumGivenSize, type = "l", xlab = "Ensemble size", ylab = "Objective function", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+plot(ensembleSize, AICGreedyBaggingMinimumGivenSize, type = "l", xlab = "Ensemble size", ylab = "AIC", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+plot(ensembleSize, BICGreedyBaggingMinimumGivenSize, type = "l", xlab = "Ensemble size", ylab = "BIC", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+
+
+# size 643 x 499
+MSE.color = "darkslategray"
+LL.color = "firebrick1"
+
+MSE.line = 1
+LL.line = 2
+
+par(mar = c(4, 4, 1, 4))
+plot(lambdaVector, MSEGreedyBaggingMinimumGivenLambda, type = "l", xlab = expression(lambda), ylab = expression(paste("Mean squared error ("^{o},"C" ^{2}, ")", sep = "")), cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line, ylim = c(2.06, 2.21), yaxt = "n")
+axis(2, seq(2.06, 2.22, 0.03),  cex.axis = 1.4)
+
+abline(v=0, untf = FALSE, lty = 3)
+abline(v=0.2, untf = FALSE, lty = 3)
+abline(v=0.4, untf = FALSE, lty = 3)
+abline(v=0.6, untf = FALSE, lty = 3)
+abline(v=0.8, untf = FALSE, lty = 3)
+abline(v=1, untf = FALSE, lty = 3)
+
+abline(h=2.06, untf = FALSE, lty = 3)
+abline(h=2.09, untf = FALSE, lty = 3)
+abline(h=2.12, untf = FALSE, lty = 3)
+abline(h=2.15, untf = FALSE, lty = 3)
+abline(h=2.18, untf = FALSE, lty = 3)
+abline(h=2.21, untf = FALSE, lty = 3)
+
+lines(lambdaVector, MSEGreedyBaggingMinimumGivenLambda, lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+legend(0, 2.18, c("MSE", "LL"), pch = c(15, 15), cex = 1.4,
+       col = c(MSE.color, LL.color), 
+       lty = c(MSE.line, LL.line),
+       lwd = c(3, 3, 3),
+       horiz = T)
+
+par(new = T)
+plot(lambdaVector, -LLGreedyBaggingMaximumGivenLambda, type = "l", xlab = "", ylab = "", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = LL.color, lty = LL.line, bty = "n", axes = F, ylim = c(-9.5, 7.5))
+
+axis(4, at = seq(-9.5, 7.5, length.out = 6),  cex.axis = 1.4)
+mtext("Negative Log-Likelihood", side = 4, cex = 1.6, line=2.5)
+
+
+# Select the group that (for all lambda):
+# 1) minimizes MSE: group 3 (lambda position = 29)
+which.min(MSEGreedyBaggingMinimumGivenSize)
+which.min(MSEGreedyBaggingMinimumGivenLambda)
+# 2) maximizes LL: group 5 (lambda position = 22)
+which.max(LLGreedyBaggingMaximumGivenSize)
+which.max(LLGreedyBaggingMaximumGivenLambda)
+# 3) minimizes AIC: group 5 (lambda position = 22)
+which.min(AICGreedyBaggingMinimumGivenSize)
+which.min(AICGreedyBaggingMinimumGivenLambda)
+# 4) minimizes BIC: group 4 (lambda position = 23)
+which.min(BICGreedyBaggingMinimumGivenSize)
+which.min(BICGreedyBaggingMinimumGivenLambda)
+# 5) minimizes objective function: group 12 (lambda position = 1)
+which.min(ObjGreedyBaggingMinimumGivenSize)
+which.min(ObjGreedyBaggingMinimumGivenLambda)
+```
+
+
+
+
+```{r}
+# naive optium weight
+naiveOptimumWeightKM = read.mat("../../ensembleData/naiveOptimumWeightKM.mat")
+
+# size 643 x 499
+lambdaVector = c(0, 10^seq(-4, -1, 0.25), seq(0.2, 0.8, 0.3), 1 - 10^seq(-1, -4, -0.25), 1)
+ensembleSize = seq(1, 1000)
+
+# These plots are very difficulty to interpret
+bigVectorMSE = naiveOptimumWeightKM$MSEOptimumWeights[[7]][[1]]
+bigVectorLL = naiveOptimumWeightKM$LLOptimumWeights[[7]][[1]]
+bigVectorObj = naiveOptimumWeightKM$ObjOptimumWeights[[7]][[1]]
+for (ii in 2:length(lambdaVector)){
+  bigVectorMSE = c(bigVectorMSE, naiveOptimumWeightKM$MSEOptimumWeights[[7]][[ii]])
+  bigVectorLL = c(bigVectorLL, naiveOptimumWeightKM$LLOptimumWeights[[7]][[ii]])
+  bigVectorObj = c(bigVectorObj, naiveOptimumWeightKM$ObjOptimumWeights[[7]][[ii]])
+}
+
+
+naiveNumberOfNonZeroWeights = matrix(NA, nrow = length(ensembleSize), ncol = length(lambdaVector))
+for (ii in 1:length(lambdaVector)){
+  for (jj in 1:length(ensembleSize)){
+    naiveNumberOfNonZeroWeights[jj,ii] = 
+                          sum( c(naiveOptimumWeightKM$naiveOptimumWeights[[1]][[ii]][[1]][[jj]] > 0,
+                                 naiveOptimumWeightKM$naiveOptimumWeights[[2]][[ii]][[1]][[jj]] > 0,
+                                 naiveOptimumWeightKM$naiveOptimumWeights[[3]][[ii]][[1]][[jj]] > 0,
+                                 naiveOptimumWeightKM$naiveOptimumWeights[[4]][[ii]][[1]][[jj]] > 0,
+                                 naiveOptimumWeightKM$naiveOptimumWeights[[5]][[ii]][[1]][[jj]] > 0) )/5
+  }
+    
+}
+  
+  
+naiveOptimumWeightMSEKM.matrix = matrix(bigVectorMSE, ncol = length(lambdaVector), byrow = F)
+naiveOptimumWeightMSEKM.matrix[which(is.infinite(naiveOptimumWeightMSEKM.matrix))] = NA
+par(mar = c(4, 4, 1, 4))
+# MSE
+image2D(naiveOptimumWeightMSEKM.matrix,
+        colkey = list(cex.axis = 1.4), x = ensembleSize, y = lambdaVector,
+        xlab = "Total #sets",
+        ylab = expression(lambda),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+
+# Log-likelihood
+naiveOptimumWeightLLKM.matrix = matrix(bigVectorLL, ncol = length(lambdaVector), byrow = F)
+naiveOptimumWeightLLKM.matrix[which(is.infinite(naiveOptimumWeightLLKM.matrix))] = NA
+image2D(naiveOptimumWeightLLKM.matrix,
+        colkey = list(cex.axis = 1.4), x = ensembleSize, y = lambdaVector,
+        xlab = "Total #sets",
+        ylab = expression(lambda),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+
+# AIC
+naiveOptimumWeightAICKM.matrix = 2*naiveNumberOfNonZeroWeights - 2*naiveOptimumWeightLLKM.matrix
+image2D(naiveOptimumWeightAICKM.matrix,
+        colkey = list(cex.axis = 1.4), x = ensembleSize, y = lambdaVector,
+        xlab = "Total #sets",
+        ylab = expression(lambda),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+# BIC
+naiveOptimumWeightBICKM.matrix = log(104)*naiveNumberOfNonZeroWeights - 2*naiveOptimumWeightLLKM.matrix
+image2D(naiveOptimumWeightBICKM.matrix,
+        colkey = list(cex.axis = 1.4), x = ensembleSize, y = lambdaVector,
+        xlab = "Total #sets",
+        ylab = expression(lambda),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+# objective function  
+naiveOptimumWeightObjKM.matrix = matrix(bigVectorObj, ncol = length(lambdaVector), byrow = F)
+naiveOptimumWeightObjKM.matrix[which(is.infinite(naiveOptimumWeightObjKM.matrix))] = NA
+image2D(naiveOptimumWeightObjKM.matrix,
+        colkey = list(cex.axis = 1.4), x = ensembleSize, y = lambdaVector,
+        xlab = "Total #sets",
+        ylab = expression(lambda),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+# number of non-zer weights
+image2D(naiveNumberOfNonZeroWeights,
+        colkey = list(cex.axis = 1.4), x = ensembleSize, y = lambdaVector,
+        xlab = "Total #sets",
+        ylab = expression(lambda),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+
+
+
+# trying something else.
+MSENaiveOptimumWeightMinimumGivenLambda = 0
+LLNaiveOptimumWeightMaximumGivenLambda = 0
+ObjNaiveOptimumWeightMinimumGivenLambda = 0
+AICNaiveOptimumWeightMinimumGivenLambda = 0
+BICNaiveOptimumWeightMinimumGivenLambda = 0
+for (ii in 1:length(lambdaVector)){
+  MSENaiveOptimumWeightMinimumGivenLambda[ii] = min(naiveOptimumWeightMSEKM.matrix[, ii], na.rm = T)
+  LLNaiveOptimumWeightMaximumGivenLambda[ii] =  max(naiveOptimumWeightLLKM.matrix[, ii], na.rm = T)
+  ObjNaiveOptimumWeightMinimumGivenLambda[ii] = min(naiveOptimumWeightObjKM.matrix[, ii], na.rm = T)
+  AICNaiveOptimumWeightMinimumGivenLambda[ii] = min(naiveOptimumWeightAICKM.matrix[, ii], na.rm = T)
+  # n = 130 in total. n = 104 for each cross-validation
+  BICNaiveOptimumWeightMinimumGivenLambda[ii] = min(naiveOptimumWeightBICKM.matrix[, ii], na.rm = T)
+}
+# some plots to see what we got
+plot(lambdaVector, MSENaiveOptimumWeightMinimumGivenLambda, type = "l", xlab = expression(lambda), ylab = expression(paste("Mean squared error ("^{o},"C" ^{2}, ")", sep = "")), cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+plot(lambdaVector, -LLNaiveOptimumWeightMaximumGivenLambda, type = "l", xlab = expression(lambda), ylab = "Negative Log-Likelihood", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = LL.color, lty = LL.line)
+
+plot(lambdaVector, ObjNaiveOptimumWeightMinimumGivenLambda, type = "l", xlab = expression(lambda), ylab = "Objective function", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+plot(lambdaVector, AICNaiveOptimumWeightMinimumGivenLambda, type = "l", xlab = expression(lambda), ylab = "AIC", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+plot(lambdaVector, BICNaiveOptimumWeightMinimumGivenLambda, type = "l", xlab = expression(lambda), ylab = "BIC", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+MSENaiveOptimumWeightMinimumGivenSize = 0
+LLNaiveOptimumWeightMaximumGivenSize = 0
+ObjNaiveOptimumWeightMinimumGivenSize = 0
+AICNaiveOptimumWeightMinimumGivenSize = 0
+BICNaiveOptimumWeightMinimumGivenSize = 0
+for (ii in 1:length(ensembleSize)){
+  MSENaiveOptimumWeightMinimumGivenSize[ii] = min(naiveOptimumWeightMSEKM.matrix[ii, ])
+  LLNaiveOptimumWeightMaximumGivenSize[ii] =  max(naiveOptimumWeightLLKM.matrix[ii, ])
+  ObjNaiveOptimumWeightMinimumGivenSize[ii] = min(naiveOptimumWeightObjKM.matrix[ii, ])
+  AICNaiveOptimumWeightMinimumGivenSize[ii] = min(naiveOptimumWeightAICKM.matrix[ii, ])
+  # n = 130 in total. n = 104 for each cross-validation
+  BICNaiveOptimumWeightMinimumGivenSize[ii] = min(naiveOptimumWeightBICKM.matrix[ii, ])
+}
+# some plots to see what we got
+plot(ensembleSize, MSENaiveOptimumWeightMinimumGivenSize, type = "l", xlab = "Total #sets", ylab = expression(paste("Mean squared error ("^{o},"C" ^{2}, ")", sep = "")), cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+plot(ensembleSize, -LLNaiveOptimumWeightMaximumGivenSize, type = "l", xlab = "Total #sets", ylab = "Negative Log-Likelihood", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = LL.color, lty = LL.line)
+
+plot(ensembleSize, ObjNaiveOptimumWeightMinimumGivenSize, type = "l", xlab = "Total #sets", ylab = "Objective function", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+plot(ensembleSize, AICNaiveOptimumWeightMinimumGivenSize, type = "l", xlab = "Total #sets", ylab = "AIC", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+plot(ensembleSize, BICNaiveOptimumWeightMinimumGivenSize, type = "l", xlab = "Total #sets", ylab = "BIC", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+
+
+# size 643 x 499
+MSE.color = "darkslategray"
+LL.color = "firebrick1"
+
+MSE.line = 1
+LL.line = 2
+
+par(mar = c(4, 4, 1, 4))
+plot(lambdaVector, MSENaiveOptimumWeightMinimumGivenLambda, type = "l", xlab = expression(lambda), ylab = expression(paste("Mean squared error ("^{o},"C" ^{2}, ")", sep = "")), cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line, ylim = c(2.13, 2.21), yaxt = "n")
+axis(2, seq(2.13, 2.22, 0.02),  cex.axis = 1.4)
+
+abline(v=0, untf = FALSE, lty = 3)
+abline(v=0.2, untf = FALSE, lty = 3)
+abline(v=0.4, untf = FALSE, lty = 3)
+abline(v=0.6, untf = FALSE, lty = 3)
+abline(v=0.8, untf = FALSE, lty = 3)
+abline(v=1, untf = FALSE, lty = 3)
+
+abline(h=2.13, untf = FALSE, lty = 3)
+abline(h=2.15, untf = FALSE, lty = 3)
+abline(h=2.17, untf = FALSE, lty = 3)
+abline(h=2.19, untf = FALSE, lty = 3)
+abline(h=2.21, untf = FALSE, lty = 3)
+
+lines(lambdaVector, MSENaiveOptimumWeightMinimumGivenLambda, lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+legend(0, 2.19, c("MSE", "LL"), pch = c(15, 15), cex = 1.4,
+       col = c(MSE.color, LL.color), 
+       lty = c(MSE.line, LL.line),
+       lwd = c(3, 3, 3),
+       horiz = T)
+
+par(new = T)
+plot(lambdaVector, -LLNaiveOptimumWeightMaximumGivenLambda, type = "l", xlab = "", ylab = "", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = LL.color, lty = LL.line, bty = "n", axes = F, ylim = c(150, 850))
+
+axis(4, at = seq(150, 850, length.out = 5),  cex.axis = 1.4)
+mtext("Negative Log-Likelihood", side = 4, cex = 1.6, line=2.5)
+
+
+# Select the group that (for all lambda):
+# 1) minimizes MSE: group 900 (lambda position = 31), 3 sets
+which.min(MSENaiveOptimumWeightMinimumGivenSize)
+which.min(MSENaiveOptimumWeightMinimumGivenLambda)
+sum(naiveOptimumWeightKM$naiveOptimumWeights[[6]][[31]][[1]][[900]] > 0)
+# 2) maximizes LL: group 999 (lambda position = 1), 5 sets
+which.max(LLNaiveOptimumWeightMaximumGivenSize)
+which.max(LLNaiveOptimumWeightMaximumGivenLambda)
+sum(naiveOptimumWeightKM$naiveOptimumWeights[[6]][[1]][[1]][[999]] > 0)
+# 3) minimizes AIC: group 997 (lambda position = 19), 6 sets
+which.min(AICNaiveOptimumWeightMinimumGivenSize)
+which.min(AICNaiveOptimumWeightMinimumGivenLambda)
+sum(naiveOptimumWeightKM$naiveOptimumWeights[[6]][[19]][[1]][[997]] > 0)
+# 4) minimizes BIC: group 987 (lambda position = 19), 6 sets
+which.min(BICNaiveOptimumWeightMinimumGivenSize)
+which.min(BICNaiveOptimumWeightMinimumGivenLambda)
+sum(naiveOptimumWeightKM$naiveOptimumWeights[[6]][[19]][[1]][[987]] > 0)
+# 5) minimizes objective function: group 951 (lambda position = 31), 3 sets
+which.min(ObjNaiveOptimumWeightMinimumGivenSize)
+which.min(ObjNaiveOptimumWeightMinimumGivenLambda)
+sum(naiveOptimumWeightKM$naiveOptimumWeights[[6]][[31]][[1]][[951]] > 0)
+```
+
+
+
+
+```{r}
+# random optium weight
+randomOptimumWeightKM = read.mat("../../ensembleData/randomOptimumWeightKM.mat")
+
+# size 643 x 499
+lambdaVector = c(0, 10^seq(-4, -1, 0.25), seq(0.2, 0.8, 0.3), 1 - 10^seq(-1, -4, -0.25), 1)
+
+# These plots are very difficulty to interpret
+bigVectorMSE = randomOptimumWeightKM$MSERandomOptimumWeights[[7]][[1]]
+bigVectorLL = randomOptimumWeightKM$LLRandomOptimumWeights[[7]][[1]]
+bigVectorObj = randomOptimumWeightKM$ObjRandomOptimumWeights[[7]][[1]]
+for (ii in 2:length(lambdaVector)){
+  bigVectorMSE = c(bigVectorMSE, randomOptimumWeightKM$MSERandomOptimumWeights[[7]][[ii]])
+  bigVectorLL = c(bigVectorLL, randomOptimumWeightKM$LLRandomOptimumWeights[[7]][[ii]])
+  bigVectorObj = c(bigVectorObj, randomOptimumWeightKM$ObjRandomOptimumWeights[[7]][[ii]])
+}
+
+
+randomNumberOfNonZeroWeights = matrix(NA, nrow = length(randomOptimumWeightKM$MSERandomOptimumWeights[[7]][[1]]), ncol = length(lambdaVector))
+for (ii in 1:length(lambdaVector)){
+  for (jj in 1:length(randomOptimumWeightKM$MSERandomOptimumWeights[[7]][[1]])){
+    randomNumberOfNonZeroWeights[jj,ii] = 
+                          sum( c(randomOptimumWeightKM$randomOptimumWeights[[1]][[ii]][[1]][[jj]] > 0,
+                                 randomOptimumWeightKM$randomOptimumWeights[[2]][[ii]][[1]][[jj]] > 0,
+                                 randomOptimumWeightKM$randomOptimumWeights[[3]][[ii]][[1]][[jj]] > 0,
+                                 randomOptimumWeightKM$randomOptimumWeights[[4]][[ii]][[1]][[jj]] > 0,
+                                 randomOptimumWeightKM$randomOptimumWeights[[5]][[ii]][[1]][[jj]] > 0) )/5
+  }
+    
+}
+  
+  
+randomOptimumWeightMSEKM.matrix = matrix(bigVectorMSE, ncol = length(lambdaVector), byrow = F)
+randomOptimumWeightMSEKM.matrix[which(is.infinite(randomOptimumWeightMSEKM.matrix))] = NA
+par(mar = c(4, 4, 1, 4))
+# MSE
+image2D(randomOptimumWeightMSEKM.matrix,
+        colkey = list(cex.axis = 1.4), x = 1:5000, y = lambdaVector,
+        xlab = "#Trial",
+        ylab = expression(lambda),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+
+# Log-likelihood
+randomOptimumWeightLLKM.matrix = matrix(bigVectorLL, ncol = length(lambdaVector), byrow = F)
+randomOptimumWeightLLKM.matrix[which(is.infinite(randomOptimumWeightLLKM.matrix))] = NA
+image2D(randomOptimumWeightLLKM.matrix,
+        colkey = list(cex.axis = 1.4), x = 1:5000, y = lambdaVector,
+        xlab = "#Trial",
+        ylab = expression(lambda),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+
+# AIC
+randomOptimumWeightAICKM.matrix = 2*randomNumberOfNonZeroWeights - 2*randomOptimumWeightLLKM.matrix
+image2D(randomOptimumWeightAICKM.matrix,
+        colkey = list(cex.axis = 1.4), x = 1:5000, y = lambdaVector,
+        xlab = "#Trial",
+        ylab = expression(lambda),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+# BIC
+randomOptimumWeightBICKM.matrix = log(104)*randomNumberOfNonZeroWeights - 2*randomOptimumWeightLLKM.matrix
+image2D(randomOptimumWeightBICKM.matrix,
+        colkey = list(cex.axis = 1.4), x = 1:5000, y = lambdaVector,
+        xlab = "#Trial",
+        ylab = expression(lambda),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+# objective function  
+randomOptimumWeightObjKM.matrix = matrix(bigVectorObj, ncol = length(lambdaVector), byrow = F)
+randomOptimumWeightObjKM.matrix[which(is.infinite(randomOptimumWeightObjKM.matrix))] = NA
+image2D(randomOptimumWeightObjKM.matrix,
+        colkey = list(cex.axis = 1.4), x = 1:5000, y = lambdaVector,
+        xlab = "#Trial",
+        ylab = expression(lambda),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+# number of non-zer weights
+image2D(randomNumberOfNonZeroWeights,
+        colkey = list(cex.axis = 1.4), x = 1:5000, y = lambdaVector,
+        xlab = "#Trial",
+        ylab = expression(lambda),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+
+
+
+# trying something else.
+MSERandomOptimumWeightMinimumGivenLambda = 0
+LLRandomOptimumWeightMaximumGivenLambda = 0
+ObjRandomOptimumWeightMinimumGivenLambda = 0
+AICRandomOptimumWeightMinimumGivenLambda = 0
+BICRandomOptimumWeightMinimumGivenLambda = 0
+for (ii in 1:length(lambdaVector)){
+  MSERandomOptimumWeightMinimumGivenLambda[ii] = min(randomOptimumWeightMSEKM.matrix[, ii], na.rm = T)
+  LLRandomOptimumWeightMaximumGivenLambda[ii] =  max(randomOptimumWeightLLKM.matrix[, ii], na.rm = T)
+  ObjRandomOptimumWeightMinimumGivenLambda[ii] = min(randomOptimumWeightObjKM.matrix[, ii], na.rm = T)
+  AICRandomOptimumWeightMinimumGivenLambda[ii] = min(randomOptimumWeightAICKM.matrix[, ii], na.rm = T)
+  # n = 130 in total. n = 104 for each cross-validation
+  BICRandomOptimumWeightMinimumGivenLambda[ii] = min(randomOptimumWeightBICKM.matrix[, ii], na.rm = T)
+}
+# some plots to see what we got
+plot(lambdaVector, MSERandomOptimumWeightMinimumGivenLambda, type = "l", xlab = expression(lambda), ylab = expression(paste("Mean squared error ("^{o},"C" ^{2}, ")", sep = "")), cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+plot(lambdaVector, -LLRandomOptimumWeightMaximumGivenLambda, type = "l", xlab = expression(lambda), ylab = "Negative Log-Likelihood", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = LL.color, lty = LL.line)
+
+plot(lambdaVector, ObjRandomOptimumWeightMinimumGivenLambda, type = "l", xlab = expression(lambda), ylab = "Objective function", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+plot(lambdaVector, AICRandomOptimumWeightMinimumGivenLambda, type = "l", xlab = expression(lambda), ylab = "AIC", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+plot(lambdaVector, BICRandomOptimumWeightMinimumGivenLambda, type = "l", xlab = expression(lambda), ylab = "BIC", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+MSERandomOptimumWeightMinimumGivenSize = 0
+LLRandomOptimumWeightMaximumGivenSize = 0
+ObjRandomOptimumWeightMinimumGivenSize = 0
+AICRandomOptimumWeightMinimumGivenSize = 0
+BICRandomOptimumWeightMinimumGivenSize = 0
+for (ii in 1:length(ensembleSize)){
+  MSERandomOptimumWeightMinimumGivenSize[ii] = min(randomOptimumWeightMSEKM.matrix[ii, ])
+  LLRandomOptimumWeightMaximumGivenSize[ii] =  max(randomOptimumWeightLLKM.matrix[ii, ])
+  ObjRandomOptimumWeightMinimumGivenSize[ii] = min(randomOptimumWeightObjKM.matrix[ii, ])
+  AICRandomOptimumWeightMinimumGivenSize[ii] = min(randomOptimumWeightAICKM.matrix[ii, ])
+  # n = 130 in total. n = 104 for each cross-validation
+  BICRandomOptimumWeightMinimumGivenSize[ii] = min(randomOptimumWeightBICKM.matrix[ii, ])
+}
+# some plots to see what we got
+plot(ensembleSize, MSERandomOptimumWeightMinimumGivenSize, type = "l", xlab = "Total #sets", ylab = expression(paste("Mean squared error ("^{o},"C" ^{2}, ")", sep = "")), cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+plot(ensembleSize, -LLRandomOptimumWeightMaximumGivenSize, type = "l", xlab = "Total #sets", ylab = "Negative Log-Likelihood", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = LL.color, lty = LL.line)
+
+plot(ensembleSize, ObjRandomOptimumWeightMinimumGivenSize, type = "l", xlab = "Total #sets", ylab = "Objective function", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+plot(ensembleSize, AICRandomOptimumWeightMinimumGivenSize, type = "l", xlab = "Total #sets", ylab = "AIC", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+plot(ensembleSize, BICRandomOptimumWeightMinimumGivenSize, type = "l", xlab = "Total #sets", ylab = "BIC", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+
+
+# size 643 x 499
+MSE.color = "darkslategray"
+LL.color = "firebrick1"
+
+MSE.line = 1
+LL.line = 2
+
+par(mar = c(4, 4, 1, 4))
+plot(lambdaVector, MSERandomOptimumWeightMinimumGivenLambda, type = "l", xlab = expression(lambda), ylab = expression(paste("Mean squared error ("^{o},"C" ^{2}, ")", sep = "")), cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line, ylim = c(2.18, 2.33), yaxt = "n")
+axis(2, seq(2.18, 2.33, 0.03),  cex.axis = 1.4)
+
+abline(v=0, untf = FALSE, lty = 3)
+abline(v=0.2, untf = FALSE, lty = 3)
+abline(v=0.4, untf = FALSE, lty = 3)
+abline(v=0.6, untf = FALSE, lty = 3)
+abline(v=0.8, untf = FALSE, lty = 3)
+abline(v=1, untf = FALSE, lty = 3)
+
+abline(h=2.18, untf = FALSE, lty = 3)
+abline(h=2.21, untf = FALSE, lty = 3)
+abline(h=2.24, untf = FALSE, lty = 3)
+abline(h=2.27, untf = FALSE, lty = 3)
+abline(h=2.30, untf = FALSE, lty = 3)
+abline(h=2.33, untf = FALSE, lty = 3)
+
+lines(lambdaVector, MSERandomOptimumWeightMinimumGivenLambda, lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+legend(0, 2.30, c("MSE", "LL"), pch = c(15, 15), cex = 1.4,
+       col = c(MSE.color, LL.color), 
+       lty = c(MSE.line, LL.line),
+       lwd = c(3, 3, 3),
+       horiz = T)
+
+par(new = T)
+plot(lambdaVector, -LLRandomOptimumWeightMaximumGivenLambda, type = "l", xlab = "", ylab = "", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = LL.color, lty = LL.line, bty = "n", axes = F, ylim = c(5, 18))
+
+axis(4, at = seq(5, 18, length.out = 6),  cex.axis = 1.4)
+mtext("Negative Log-Likelihood", side = 4, cex = 1.6, line=2.5)
+
+
+# Select the group that (for all lambda):
+# 1) minimizes MSE: group 390 (lambda position = 31), 2 sets
+which.min(MSERandomOptimumWeightMinimumGivenSize)
+which.min(MSERandomOptimumWeightMinimumGivenLambda)
+sum(randomOptimumWeightKM$randomOptimumWeights[[6]][[31]][[1]][[390]] > 0)
+# 2) maximizes LL: group 756 (lambda position = 1), 2 sets
+which.max(LLRandomOptimumWeightMaximumGivenSize)
+which.max(LLRandomOptimumWeightMaximumGivenLambda)
+sum(randomOptimumWeightKM$randomOptimumWeights[[6]][[1]][[1]][[756]] > 0)
+# 3) minimizes AIC: group 756 (lambda position = 1), 2 sets
+which.min(AICRandomOptimumWeightMinimumGivenSize)
+which.min(AICRandomOptimumWeightMinimumGivenLambda)
+sum(randomOptimumWeightKM$randomOptimumWeights[[6]][[1]][[1]][[756]] > 0)
+# 4) minimizes BIC: group 756 (lambda position = 20), 2 sets
+which.min(BICRandomOptimumWeightMinimumGivenSize)
+which.min(BICRandomOptimumWeightMinimumGivenLambda)
+sum(randomOptimumWeightKM$randomOptimumWeights[[6]][[20]][[1]][[756]] > 0)
+# 5) minimizes objective function: group 892 (lambda position = 31), 2 sets
+which.min(ObjRandomOptimumWeightMinimumGivenSize)
+which.min(ObjRandomOptimumWeightMinimumGivenLambda)
+sum(randomOptimumWeightKM$randomOptimumWeights[[6]][[31]][[1]][[892]] > 0)
+```
+
+
+
+
+```{r}
+# greedy optium weight
+greedyOptimumWeightKM = read.mat("../../ensembleData/greedyOptimumWeightKM.mat")
+
+# size 643 x 499
+lambdaVector = c(0, 10^seq(-4, -1, 0.25), seq(0.2, 0.8, 0.3), 1 - 10^seq(-1, -4, -0.25), 1)
+numberGreedySets = length(greedyOptimumWeightKM$MSEGreedyOptimumWeight[[7]][[1]])
+greedyIteration = 1:numberGreedySets
+
+# These plots are very difficulty to interpret
+bigVectorMSE = greedyOptimumWeightKM$MSEGreedyOptimumWeight[[7]][[1]]
+bigVectorLL = greedyOptimumWeightKM$LLGreedyOptimumWeights[[7]][[1]]
+bigVectorObj = greedyOptimumWeightKM$ObjGreedyOptimumWeights[[7]][[1]]
+for (ii in 2:length(lambdaVector)){
+  bigVectorMSE = c(bigVectorMSE, greedyOptimumWeightKM$MSEGreedyOptimumWeight[[7]][[ii]])
+  bigVectorLL = c(bigVectorLL, greedyOptimumWeightKM$LLGreedyOptimumWeights[[7]][[ii]])
+  bigVectorObj = c(bigVectorObj, greedyOptimumWeightKM$ObjGreedyOptimumWeights[[7]][[ii]])
+}
+
+
+greedyNumberOfNonZeroWeights = matrix(NA, nrow = numberGreedySets, ncol = length(lambdaVector))
+for (ii in 1:length(lambdaVector)){
+  for (jj in 1:numberGreedySets){
+    greedyNumberOfNonZeroWeights[jj, ii] = 
+                          sum( c(greedyOptimumWeightKM$greedyWeights[[1]][[ii]][[1]][[jj]] > 0,
+                                 greedyOptimumWeightKM$greedyWeights[[2]][[ii]][[1]][[jj]] > 0,
+                                 greedyOptimumWeightKM$greedyWeights[[3]][[ii]][[1]][[jj]] > 0,
+                                 greedyOptimumWeightKM$greedyWeights[[4]][[ii]][[1]][[jj]] > 0,
+                                 greedyOptimumWeightKM$greedyWeights[[5]][[ii]][[1]][[jj]] > 0) )/5
+  }
+}
+  
+  
+greedyOptimumWeightMSEKM.matrix = matrix(bigVectorMSE, ncol = length(lambdaVector), byrow = F)
+greedyOptimumWeightMSEKM.matrix[which(is.infinite(greedyOptimumWeightMSEKM.matrix))] = NA
+par(mar = c(4, 4, 1, 4))
+# MSE
+image2D(greedyOptimumWeightMSEKM.matrix,
+        colkey = list(cex.axis = 1.4), x = greedyIteration, y = lambdaVector,
+        xlab = "Iteration",
+        ylab = expression(lambda),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+
+# Log-likelihood
+greedyOptimumWeightLLKM.matrix = matrix(bigVectorLL, ncol = length(lambdaVector), byrow = F)
+greedyOptimumWeightLLKM.matrix[which(is.infinite(greedyOptimumWeightLLKM.matrix))] = NA
+image2D(greedyOptimumWeightLLKM.matrix,
+        colkey = list(cex.axis = 1.4), x = greedyIteration, y = lambdaVector,
+        xlab = "Iteration",
+        ylab = expression(lambda),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+
+# AIC
+greedyOptimumWeightAICKM.matrix = 2*greedyNumberOfNonZeroWeights - 2*greedyOptimumWeightLLKM.matrix
+image2D(greedyOptimumWeightAICKM.matrix,
+        colkey = list(cex.axis = 1.4), x = greedyIteration, y = lambdaVector,
+        xlab = "Iteration",
+        ylab = expression(lambda),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+# BIC
+greedyOptimumWeightBICKM.matrix = log(104)*greedyNumberOfNonZeroWeights - 2*greedyOptimumWeightLLKM.matrix
+image2D(greedyOptimumWeightBICKM.matrix,
+        colkey = list(cex.axis = 1.4), x = greedyIteration, y = lambdaVector,
+        xlab = "Iteration",
+        ylab = expression(lambda),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+# objective function  
+greedyOptimumWeightObjKM.matrix = matrix(bigVectorObj, ncol = length(lambdaVector), byrow = F)
+greedyOptimumWeightObjKM.matrix[which(is.infinite(greedyOptimumWeightObjKM.matrix))] = NA
+image2D(greedyOptimumWeightObjKM.matrix,
+        colkey = list(cex.axis = 1.4), x = greedyIteration, y = lambdaVector,
+        xlab = "Iteration",
+        ylab = expression(lambda),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+# number of non-zer weights
+image2D(greedyNumberOfNonZeroWeights,
+        colkey = list(cex.axis = 1.4), x = greedyIteration, y = lambdaVector,
+        xlab = "Iteration",
+        ylab = expression(lambda),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+
+
+
+# trying something else.
+MSEGreedyOptimumWeightMinimumGivenLambda = 0
+LLGreedyOptimumWeightMaximumGivenLambda = 0
+ObjGreedyOptimumWeightMinimumGivenLambda = 0
+AICGreedyOptimumWeightMinimumGivenLambda = 0
+BICGreedyOptimumWeightMinimumGivenLambda = 0
+for (ii in 1:length(lambdaVector)){
+  MSEGreedyOptimumWeightMinimumGivenLambda[ii] = min(greedyOptimumWeightMSEKM.matrix[, ii], na.rm = T)
+  LLGreedyOptimumWeightMaximumGivenLambda[ii] =  max(greedyOptimumWeightLLKM.matrix[, ii], na.rm = T)
+  ObjGreedyOptimumWeightMinimumGivenLambda[ii] = min(greedyOptimumWeightObjKM.matrix[, ii], na.rm = T)
+  AICGreedyOptimumWeightMinimumGivenLambda[ii] = min(greedyOptimumWeightAICKM.matrix[, ii], na.rm = T)
+  # n = 130 in total. n = 104 for each cross-validation
+  BICGreedyOptimumWeightMinimumGivenLambda[ii] = min(greedyOptimumWeightBICKM.matrix[, ii], na.rm = T)
+}
+# some plots to see what we got
+plot(lambdaVector, MSEGreedyOptimumWeightMinimumGivenLambda, type = "l", xlab = expression(lambda), ylab = expression(paste("Mean squared error ("^{o},"C" ^{2}, ")", sep = "")), cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+plot(lambdaVector, -LLGreedyOptimumWeightMaximumGivenLambda, type = "l", xlab = expression(lambda), ylab = "Negative Log-Likelihood", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = LL.color, lty = LL.line)
+
+plot(lambdaVector, ObjGreedyOptimumWeightMinimumGivenLambda, type = "l", xlab = expression(lambda), ylab = "Objective function", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+plot(lambdaVector, AICGreedyOptimumWeightMinimumGivenLambda, type = "l", xlab = expression(lambda), ylab = "AIC", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+plot(lambdaVector, BICGreedyOptimumWeightMinimumGivenLambda, type = "l", xlab = expression(lambda), ylab = "BIC", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+MSEGreedyOptimumWeightMinimumGivenSize = 0
+LLGreedyOptimumWeightMaximumGivenSize = 0
+ObjGreedyOptimumWeightMinimumGivenSize = 0
+AICGreedyOptimumWeightMinimumGivenSize = 0
+BICGreedyOptimumWeightMinimumGivenSize = 0
+for (ii in greedyIteration){
+  MSEGreedyOptimumWeightMinimumGivenSize[ii] = min(greedyOptimumWeightMSEKM.matrix[ii, ])
+  LLGreedyOptimumWeightMaximumGivenSize[ii] =  max(greedyOptimumWeightLLKM.matrix[ii, ])
+  ObjGreedyOptimumWeightMinimumGivenSize[ii] = min(greedyOptimumWeightObjKM.matrix[ii, ])
+  AICGreedyOptimumWeightMinimumGivenSize[ii] = min(greedyOptimumWeightAICKM.matrix[ii, ])
+  # n = 130 in total. n = 104 for each cross-validation
+  BICGreedyOptimumWeightMinimumGivenSize[ii] = min(greedyOptimumWeightBICKM.matrix[ii, ])
+}
+# some plots to see what we got
+plot(greedyIteration, MSEGreedyOptimumWeightMinimumGivenSize, type = "l", xlab = "Total #sets", ylab = expression(paste("Mean squared error ("^{o},"C" ^{2}, ")", sep = "")), cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+plot(greedyIteration, -LLGreedyOptimumWeightMaximumGivenSize, type = "l", xlab = "Total #sets", ylab = "Negative Log-Likelihood", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = LL.color, lty = LL.line)
+
+plot(greedyIteration, ObjGreedyOptimumWeightMinimumGivenSize, type = "l", xlab = "Total #sets", ylab = "Objective function", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+plot(greedyIteration, AICGreedyOptimumWeightMinimumGivenSize, type = "l", xlab = "Total #sets", ylab = "AIC", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+plot(greedyIteration, BICGreedyOptimumWeightMinimumGivenSize, type = "l", xlab = "Total #sets", ylab = "BIC", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+
+
+# size 643 x 499
+MSE.color = "darkslategray"
+LL.color = "firebrick1"
+
+MSE.line = 1
+LL.line = 2
+
+par(mar = c(4, 4, 1, 4))
+plot(lambdaVector, MSEGreedyOptimumWeightMinimumGivenLambda, type = "l", xlab = expression(lambda), ylab = expression(paste("Mean squared error ("^{o},"C" ^{2}, ")", sep = "")), cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = MSE.color, lty = MSE.line, ylim = c(1.99, 2.01), yaxt = "n")
+axis(2, seq(1.99, 2.01, 0.005),  cex.axis = 1.4)
+
+abline(v=0, untf = FALSE, lty = 3)
+abline(v=0.2, untf = FALSE, lty = 3)
+abline(v=0.4, untf = FALSE, lty = 3)
+abline(v=0.6, untf = FALSE, lty = 3)
+abline(v=0.8, untf = FALSE, lty = 3)
+abline(v=1, untf = FALSE, lty = 3)
+
+abline(h=1.99, untf = FALSE, lty = 3)
+abline(h=1.995, untf = FALSE, lty = 3)
+abline(h=2, untf = FALSE, lty = 3)
+abline(h=2.005, untf = FALSE, lty = 3)
+abline(h=2.01, untf = FALSE, lty = 3)
+
+lines(lambdaVector, MSEGreedyOptimumWeightMinimumGivenLambda, lwd = 4.5, col = MSE.color, lty = MSE.line)
+
+legend(0, 2.005, c("MSE", "LL"), pch = c(15, 15), cex = 1.4,
+       col = c(MSE.color, LL.color), 
+       lty = c(MSE.line, LL.line),
+       lwd = c(3, 3, 3),
+       horiz = T)
+
+par(new = T)
+plot(lambdaVector, -LLGreedyOptimumWeightMaximumGivenLambda, type = "l", xlab = "", ylab = "", cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), lwd = 4.5, col = LL.color, lty = LL.line, bty = "n", axes = F, ylim = c(-14.6, -11.6))
+
+axis(4, at = seq(-14.6, -11.6, length.out = 5),  cex.axis = 1.4)
+mtext("Negative Log-Likelihood", side = 4, cex = 1.6, line=2.5)
+
+
+# Select the group that (for all lambda):
+# 1) minimizes MSE: group 9935 (lambda position = 26), 3 sets
+which.min(MSEGreedyOptimumWeightMinimumGivenSize)
+which.min(MSEGreedyOptimumWeightMinimumGivenLambda)
+sum(greedyOptimumWeightKM$greedyWeights[[6]][[26]][[1]][[9935]] > 0)
+# 2) maximizes LL: group 9344 (lambda position = 1), 3 sets
+which.max(LLGreedyOptimumWeightMaximumGivenSize)
+which.max(LLGreedyOptimumWeightMaximumGivenLambda)
+sum(greedyOptimumWeightKM$greedyWeights[[6]][[1]][[1]][[9344]] > 0)
+# 3) minimizes AIC: group 9344 (lambda position = 1), 3 sets
+which.min(AICGreedyOptimumWeightMinimumGivenSize)
+which.min(AICGreedyOptimumWeightMinimumGivenLambda)
+sum(greedyOptimumWeightKM$greedyWeights[[6]][[1]][[1]][[9344]] > 0)
+# 4) minimizes BIC: group 9344 (lambda position = 20), 3 sets
+which.min(BICGreedyOptimumWeightMinimumGivenSize)
+which.min(BICGreedyOptimumWeightMinimumGivenLambda)
+sum(greedyOptimumWeightKM$greedyWeights[[6]][[20]][[1]][[9344]] > 0)
+# 5) minimizes objective function: group 9344 (lambda position = 1), 3 sets
+which.min(ObjGreedyOptimumWeightMinimumGivenSize)
+which.min(ObjGreedyOptimumWeightMinimumGivenLambda)
+sum(greedyOptimumWeightKM$greedyWeights[[6]][[1]][[1]][[9344]] > 0)
+```
+
+
+```{r}
+# Checking the group of sets that minimized something and checking if they are the same.
+# naive Bagging are unique
+# random bagging are unique
+# greedy bagging are unique
+
+# checking naive optimum weight AIC and BIC
+# 3) minimizes AIC: group 997 (lambda position = 19), 6 sets
+sum(naiveOptimumWeightKM$naiveOptimumWeights[[6]][[19]][[1]][[997]] != 
+c(naiveOptimumWeightKM$naiveOptimumWeights[[6]][[19]][[1]][[987]], rep(0, 10) ))
+# They are the same
+
+# checking random optimum weights for AIC and BIC
+sum( randomOptimumWeightKM$randomOptimumWeights[[6]][[1]][[1]][[756]] !=
+     randomOptimumWeightKM$randomOptimumWeights[[6]][[20]][[1]][[756]])
+# They are different. Same sets were selected but weights were distributed differently
+
+# checking greedy optimum weights for AIC and BIC
+sum( greedyOptimumWeightKM$greedyWeights[[6]][[1]][[1]][[9344]] !=
+     greedyOptimumWeightKM$greedyWeights[[6]][[1]][[1]][[9344]])
+# They are the same
+
+```
+
+

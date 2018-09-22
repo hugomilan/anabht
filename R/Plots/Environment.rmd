@@ -1,0 +1,272 @@
+---
+title: "data_analysis"
+author: "Hugo Milan"
+date: "February 16, 2018"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# ANABHT - ANAlytical solver for steady-state BioHeat Transfer problems in 1D
+# 
+# Copyright (C) 2018 by Cornell University. All Rights Reserved.
+# 
+# Written by Hugo Fernando Maia Milan.
+# 
+# Free for educational, research and non-profit purposes.
+# Refer to the license file for details.
+#
+# 
+# File:   Environment.rmd
+# Author: Hugo Fernando Maia Milan
+# Email:  hugofernando@gmail.com
+#
+# Created on April 15, 2018.
+#
+#
+# Function description:
+# Plots environmental data
+#
+
+# loading data
+# Set the directory to where this file is located
+mean_piglets = read.csv("../../datasets/mean_values.csv")
+stderr_piglets = read.csv("../../datasets/stderr_piglets.csv")
+# Ploting mean values +- Stderr
+power_source = 0
+Hour_offset = 0
+Ta_brooder.color = "tomato4"
+Ta_pen.color = "darkslategray"
+Tg.color = "springgreen4"
+RH.color = "royalblue3"
+
+Ta_brooder.symbol = 16
+Ta_pen.symbol = 18
+Tg.symbol = 17
+RH.symbol = 15
+symbol.size = 1.3
+
+minTaxis = 15
+maxTaxis = 30.4
+
+# export as 647 x 479
+par(mar = c(5, 4, 4, 4))
+plot(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Ta_brooder[mean_piglets$Heat_source_power == power_source], xlim = c(4,27), ylim=c(minTaxis, maxTaxis), xaxt = "n", col = Ta_brooder.color, pch = Ta_brooder.symbol, ylab = expression(paste("Temperature ("^{o},"C)", sep = "")), xlab = "Time (hour)", mgp=c(2.05,0.7,0), mar = c(5, 4, 4, 2) + 0.3, cex=symbol.size, cex.axis = 1.4, cex.lab = 1.6)
+# including ticks
+axis(2, at = c(15:30), labels = FALSE)
+# power_source = 0
+axis(1, at = c(4, 5, 6, 7), labels = c(4, 5, 6, 7), cex.axis = 1.4)
+axis(1, at = c(5, 7), labels = c(5, 7), cex.axis = 1.4, tick = FALSE)
+# power_source = 60
+axis(1, at = 5+c(4, 5, 6, 7), labels = c(4, 5, 6, 7), cex.axis = 1.4)
+axis(1, at = 5+c(5, 7), labels = c(5, 7), cex.axis = 1.4, tick = FALSE)
+# power_source = 100
+axis(1, at = 10+c(4, 5, 6, 7), labels = c(4, 5, 6, 7), cex.axis = 1.4)
+axis(1, at = 10+c(5, 7), labels = c(5, 7), cex.axis = 1.4, tick = FALSE)
+# power_source = 160
+axis(1, at = 15+c(4, 5, 6, 7), labels = c(4, 5, 6, 7), cex.axis = 1.4)
+axis(1, at = 15+c(5, 7), labels = c(5, 7), cex.axis = 1.4, tick = FALSE)
+# power_source = 200
+axis(1, at = 20+c(4, 5, 6, 7), labels = c(4, 5, 6, 7), cex.axis = 1.4)
+axis(1, at = 20+c(5, 7), labels = c(5, 7), cex.axis = 1.4, tick = FALSE)
+
+arrows(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Ta_brooder[mean_piglets$Heat_source_power == power_source] - stderr_piglets$Ta_brooder[mean_piglets$Heat_source_power == power_source], Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Ta_brooder[mean_piglets$Heat_source_power == power_source] + stderr_piglets$Ta_brooder[mean_piglets$Heat_source_power == power_source], lwd = 1.5, angle = 90, code = 3, length = 0.05, col = Ta_brooder.color)
+
+power_source = 60
+Hour_offset = 5
+points(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Ta_brooder[mean_piglets$Heat_source_power == power_source], col = Ta_brooder.color, pch = Ta_brooder.symbol, cex=symbol.size)
+arrows(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Ta_brooder[mean_piglets$Heat_source_power == power_source] - stderr_piglets$Ta_brooder[mean_piglets$Heat_source_power == power_source], Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Ta_brooder[mean_piglets$Heat_source_power == power_source] + stderr_piglets$Ta_brooder[mean_piglets$Heat_source_power == power_source], lwd = 1.5, angle = 90, code = 3, length = 0.05, col = Ta_brooder.color)
+
+power_source = 100
+Hour_offset = 10
+points(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Ta_brooder[mean_piglets$Heat_source_power == power_source], col = Ta_brooder.color, pch = Ta_brooder.symbol, cex=symbol.size)
+arrows(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Ta_brooder[mean_piglets$Heat_source_power == power_source] - stderr_piglets$Ta_brooder[mean_piglets$Heat_source_power == power_source], Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Ta_brooder[mean_piglets$Heat_source_power == power_source] + stderr_piglets$Ta_brooder[mean_piglets$Heat_source_power == power_source], lwd = 1.5, angle = 90, code = 3, length = 0.05, col = Ta_brooder.color)
+
+power_source = 160
+Hour_offset = 15
+points(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Ta_brooder[mean_piglets$Heat_source_power == power_source], col = Ta_brooder.color, pch = Ta_brooder.symbol, cex=symbol.size)
+arrows(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Ta_brooder[mean_piglets$Heat_source_power == power_source] - stderr_piglets$Ta_brooder[mean_piglets$Heat_source_power == power_source], Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Ta_brooder[mean_piglets$Heat_source_power == power_source] + stderr_piglets$Ta_brooder[mean_piglets$Heat_source_power == power_source], lwd = 1.5, angle = 90, code = 3, length = 0.05, col = Ta_brooder.color)
+
+power_source = 200
+Hour_offset = 20
+points(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Ta_brooder[mean_piglets$Heat_source_power == power_source], col = Ta_brooder.color, pch = Ta_brooder.symbol, cex=symbol.size)
+arrows(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Ta_brooder[mean_piglets$Heat_source_power == power_source] - stderr_piglets$Ta_brooder[mean_piglets$Heat_source_power == power_source], Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Ta_brooder[mean_piglets$Heat_source_power == power_source] + stderr_piglets$Ta_brooder[mean_piglets$Heat_source_power == power_source], lwd = 1.5, angle = 90, code = 3, length = 0.05, col = Ta_brooder.color)
+
+# Ta_pen
+power_source = 0
+Hour_offset = 0
+points(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Ta_pen[mean_piglets$Heat_source_power == power_source], col = Ta_pen.color, pch = Ta_pen.symbol, cex=symbol.size)
+arrows(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Ta_pen[mean_piglets$Heat_source_power == power_source] - stderr_piglets$Ta_pen[mean_piglets$Heat_source_power == power_source], Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Ta_pen[mean_piglets$Heat_source_power == power_source] + stderr_piglets$Ta_pen[mean_piglets$Heat_source_power == power_source], lwd = 1.5, angle = 90, code = 3, length = 0.05, col = Ta_pen.color)
+
+power_source = 60
+Hour_offset = 5
+points(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Ta_pen[mean_piglets$Heat_source_power == power_source], col = Ta_pen.color, pch = Ta_pen.symbol, cex=symbol.size)
+arrows(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Ta_pen[mean_piglets$Heat_source_power == power_source] - stderr_piglets$Ta_pen[mean_piglets$Heat_source_power == power_source], Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Ta_pen[mean_piglets$Heat_source_power == power_source] + stderr_piglets$Ta_pen[mean_piglets$Heat_source_power == power_source], lwd = 1.5, angle = 90, code = 3, length = 0.05, col = Ta_pen.color)
+
+power_source = 100
+Hour_offset = 10
+points(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Ta_pen[mean_piglets$Heat_source_power == power_source], col = Ta_pen.color, pch = Ta_pen.symbol, cex=symbol.size)
+arrows(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Ta_pen[mean_piglets$Heat_source_power == power_source] - stderr_piglets$Ta_pen[mean_piglets$Heat_source_power == power_source], Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Ta_pen[mean_piglets$Heat_source_power == power_source] + stderr_piglets$Ta_pen[mean_piglets$Heat_source_power == power_source], lwd = 1.5, angle = 90, code = 3, length = 0.05, col = Ta_pen.color)
+
+power_source = 160
+Hour_offset = 15
+points(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Ta_pen[mean_piglets$Heat_source_power == power_source], col = Ta_pen.color, pch = Ta_pen.symbol, cex=symbol.size)
+arrows(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Ta_pen[mean_piglets$Heat_source_power == power_source] - stderr_piglets$Ta_pen[mean_piglets$Heat_source_power == power_source], Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Ta_pen[mean_piglets$Heat_source_power == power_source] + stderr_piglets$Ta_pen[mean_piglets$Heat_source_power == power_source], lwd = 1.5, angle = 90, code = 3, length = 0.05, col = Ta_pen.color)
+
+power_source = 200
+Hour_offset = 20
+points(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Ta_pen[mean_piglets$Heat_source_power == power_source], col = Ta_pen.color, pch = Ta_pen.symbol, cex=symbol.size)
+arrows(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Ta_pen[mean_piglets$Heat_source_power == power_source] - stderr_piglets$Ta_pen[mean_piglets$Heat_source_power == power_source], Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Ta_pen[mean_piglets$Heat_source_power == power_source] + stderr_piglets$Ta_pen[mean_piglets$Heat_source_power == power_source], lwd = 1.5, angle = 90, code = 3, length = 0.05, col = Ta_pen.color)
+
+# Tg
+power_source = 0
+Hour_offset = 0
+points(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Tg[mean_piglets$Heat_source_power == power_source], col = Tg.color, pch = Tg.symbol, cex=symbol.size)
+arrows(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Tg[mean_piglets$Heat_source_power == power_source] - stderr_piglets$Tg[mean_piglets$Heat_source_power == power_source], Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Tg[mean_piglets$Heat_source_power == power_source] + stderr_piglets$Tg[mean_piglets$Heat_source_power == power_source], lwd = 1.5, angle = 90, code = 3, length = 0.05, col = Tg.color)
+
+power_source = 60
+Hour_offset = 5
+points(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Tg[mean_piglets$Heat_source_power == power_source], col = Tg.color, pch = Tg.symbol, cex=symbol.size)
+arrows(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Tg[mean_piglets$Heat_source_power == power_source] - stderr_piglets$Tg[mean_piglets$Heat_source_power == power_source], Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Tg[mean_piglets$Heat_source_power == power_source] + stderr_piglets$Tg[mean_piglets$Heat_source_power == power_source], lwd = 1.5, angle = 90, code = 3, length = 0.05, col = Tg.color)
+
+power_source = 100
+Hour_offset = 10
+points(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Tg[mean_piglets$Heat_source_power == power_source], col = Tg.color, pch = Tg.symbol, cex=symbol.size)
+arrows(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Tg[mean_piglets$Heat_source_power == power_source] - stderr_piglets$Tg[mean_piglets$Heat_source_power == power_source], Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Tg[mean_piglets$Heat_source_power == power_source] + stderr_piglets$Tg[mean_piglets$Heat_source_power == power_source], lwd = 1.5, angle = 90, code = 3, length = 0.05, col = Tg.color)
+
+power_source = 160
+Hour_offset = 15
+points(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Tg[mean_piglets$Heat_source_power == power_source], col = Tg.color, pch = Tg.symbol, cex=symbol.size)
+arrows(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Tg[mean_piglets$Heat_source_power == power_source] - stderr_piglets$Tg[mean_piglets$Heat_source_power == power_source], Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Tg[mean_piglets$Heat_source_power == power_source] + stderr_piglets$Tg[mean_piglets$Heat_source_power == power_source], lwd = 1.5, angle = 90, code = 3, length = 0.05, col = Tg.color)
+
+power_source = 200
+Hour_offset = 20
+points(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Tg[mean_piglets$Heat_source_power == power_source], col = Tg.color, pch = Tg.symbol, cex=symbol.size)
+arrows(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Tg[mean_piglets$Heat_source_power == power_source] - stderr_piglets$Tg[mean_piglets$Heat_source_power == power_source], Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$Tg[mean_piglets$Heat_source_power == power_source] + stderr_piglets$Tg[mean_piglets$Heat_source_power == power_source], lwd = 1.5, angle = 90, code = 3, length = 0.05, col = Tg.color)
+
+
+# writing power
+par(xpd = NA)
+text(x = 5.5, y = 31.9, "0 W", cex = 1.6)
+text(x = 5.5+5, y = 31.9, "60 W", cex = 1.6)
+text(x = 5.5+10, y = 31.9, "100 W", cex = 1.6)
+text(x = 5.5+15, y = 31.9, "160 W", cex = 1.6)
+text(x = 5.5+20, y = 31.9, "200 W", cex = 1.6)
+par(xpd = FALSE)
+
+
+# RH
+par(new = T)
+
+power_source = 0
+Hour_offset = 0
+plot(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$RH[mean_piglets$Heat_source_power == power_source],
+     xlim = c(4,27), ylim=c(35, 60), axes = F, col = RH.color,
+     pch = RH.symbol, mgp=c(2.3,0.7,0), mar = c(5, 4, 4, 2) + 0.3, cex=symbol.size, cex.axis = 1.4, cex.lab = 1.6,
+     bty = "n", xlab = "", ylab = "")
+
+axis(4, at = seq(35, 60, 5),  cex.axis = 1.4)
+mtext("Relative humidity (%)", side = 4, cex = 1.6, line=2.5)
+
+arrows(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$RH[mean_piglets$Heat_source_power == power_source] - stderr_piglets$RH[mean_piglets$Heat_source_power == power_source], Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$RH[mean_piglets$Heat_source_power == power_source] + stderr_piglets$RH[mean_piglets$Heat_source_power == power_source], lwd = 1.5, angle = 90, code = 3, length = 0.05, col = RH.color)
+
+power_source = 60
+Hour_offset = 5
+points(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$RH[mean_piglets$Heat_source_power == power_source], col = RH.color, pch = RH.symbol, cex=symbol.size)
+arrows(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$RH[mean_piglets$Heat_source_power == power_source] - stderr_piglets$RH[mean_piglets$Heat_source_power == power_source], Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$RH[mean_piglets$Heat_source_power == power_source] + stderr_piglets$RH[mean_piglets$Heat_source_power == power_source], lwd = 1.5, angle = 90, code = 3, length = 0.05, col = RH.color)
+
+power_source = 100
+Hour_offset = 10
+points(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$RH[mean_piglets$Heat_source_power == power_source], col = RH.color, pch = RH.symbol, cex=symbol.size)
+arrows(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$RH[mean_piglets$Heat_source_power == power_source] - stderr_piglets$RH[mean_piglets$Heat_source_power == power_source], Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$RH[mean_piglets$Heat_source_power == power_source] + stderr_piglets$RH[mean_piglets$Heat_source_power == power_source], lwd = 1.5, angle = 90, code = 3, length = 0.05, col = RH.color)
+
+power_source = 160
+Hour_offset = 15
+points(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$RH[mean_piglets$Heat_source_power == power_source], col = RH.color, pch = RH.symbol, cex=symbol.size)
+arrows(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$RH[mean_piglets$Heat_source_power == power_source] - stderr_piglets$RH[mean_piglets$Heat_source_power == power_source], Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$RH[mean_piglets$Heat_source_power == power_source] + stderr_piglets$RH[mean_piglets$Heat_source_power == power_source], lwd = 1.5, angle = 90, code = 3, length = 0.05, col = RH.color)
+
+power_source = 200
+Hour_offset = 20
+points(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$RH[mean_piglets$Heat_source_power == power_source], col = RH.color, pch = RH.symbol, cex=symbol.size)
+arrows(Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$RH[mean_piglets$Heat_source_power == power_source] - stderr_piglets$RH[mean_piglets$Heat_source_power == power_source], Hour_offset + mean_piglets$Hour[mean_piglets$Heat_source_power == power_source], mean_piglets$RH[mean_piglets$Heat_source_power == power_source] + stderr_piglets$RH[mean_piglets$Heat_source_power == power_source], lwd = 1.5, angle = 90, code = 3, length = 0.05, col = RH.color)
+
+# separation lines
+abline(v=8, untf = FALSE, lty = 3)
+abline(v=13, untf = FALSE, lty = 3)
+abline(v=18, untf = FALSE, lty = 3)
+abline(v=23, untf = FALSE, lty = 3)
+
+# Legend
+legend(7.5, 61, c(expression('T'["a"]), expression('T'["a,pen"]), expression('T'["g"]), "RH"), col = c(Ta_brooder.color, Ta_pen.color, Tg.color, RH.color), pch = c(Ta_brooder.symbol, Ta_pen.symbol, Tg.symbol, RH.symbol), pt.cex = symbol.size, cex = 1.6, horiz = T, text.width = c(0, 0.7, 1.5, 1.5), y.intersp = 0.5) # ADJUST text.width
+
+
+```
+
+
+```{r}
+# Testing shape factor
+weights_dimensions = read.csv("../../datasets/weights.csv")
+weights_dimensions$Average.height.cm = (weights_dimensions$Height.back.legs..cm. + weights_dimensions$Height.front.legs..cm.)/2
+weights_dimensions$Average.radius.cm = weights_dimensions$Average.perimeter..cm./(2*pi)
+
+length_mean = mean(weights_dimensions$Length..cm., na.rm = T) # 46.63
+length_sd = sd(weights_dimensions$Length..cm., na.rm = T) # 5.77
+length = rnorm(100, length_mean, length_sd)
+
+height_mean = mean(weights_dimensions$Average.height.cm, na.rm = T) # 15.62
+height_sd = sd(weights_dimensions$Average.height.cm, na.rm = T) # 1.83
+height = rnorm(100, height_mean, height_sd)
+
+radius_mean = mean(weights_dimensions$Average.radius.cm, na.rm = T) # 5.06
+radius_sd = sd(weights_dimensions$Average.radius.cm, na.rm = T) # 0.64
+radius = rnorm(100, radius_mean, radius_sd)
+
+ShapeFactor = vector(length = 100*100*100)
+i1 = 1
+for (beta_i in seq(pi/4, pi/2, length.out = 100) ) {
+  for (omega_i in seq(0, pi/2, length.out = 100)) {
+    
+    ShapeFactor[i1:(i1 + 100 - 1)] = ( 2*radius*length/sin(beta_i)*(1 - ( cos(beta_i)*cos(omega_i) )^2 )^(1/2) + pi*radius^2/tan(beta_i)*cos(omega_i) )/( 2*pi*radius*(radius + length) )
+    i1 = i1 + 100
+  }
+}
+
+mean(ShapeFactor)
+sd(ShapeFactor)
+# not normal
+hist(ShapeFactor, probability = T)
+
+# trying to fit a beta distribution
+library(MASS)
+# ShapeFactor_gamma = fitdistr(ShapeFactor, "gamma")
+x_ShapeFactor = seq(0.27, 0.43, length.out = 1000)
+# y_gamma = dgamma(x_ShapeFactor, ShapeFactor_gamma$estimate[1], ShapeFactor_gamma$estimate[2])
+# lines(x_ShapeFactor, y_gamma)
+# 
+# gamma distribution looks beter
+# ShapeFactor_weibull = fitdistr(ShapeFactor, "weibull")
+# y_weibull = dweibull(x_ShapeFactor, ShapeFactor_weibull$estimate[1], ShapeFactor_weibull$estimate[2])
+# lines(x_ShapeFactor, y_weibull, col = 'red')
+#
+# did not converge for chi-squared distribution
+# ShapeFactor_chi = fitdistr(ShapeFactor, "chi-squared", list(df = 0.35))
+# y_chi = dchisq(x_ShapeFactor, ShapeFactor_chi$estimate[1])
+# lines(x_ShapeFactor, y_chi)
+#
+# gamma and beta distributions are very similar. I'll use beta because values are restricted between 0 and 1
+# ShapeFactor_beta = fitdistr(ShapeFactor, "beta", list(shape1 = 86.6286877, shape2 = 184.9826601))
+# y_beta = dbeta(x_ShapeFactor, ShapeFactor_beta$estimate[1], ShapeFactor_beta$estimate[2])
+# lines(x_ShapeFactor, y_beta)
+
+# beta with offset lead to the best looking plot. Offset was chosen arbitrary
+ShapeFactor_beta_offset = fitdistr(ShapeFactor - 0.27, "beta", list(shape1 = 2.986155617, shape2 = 58.021627965))
+y_beta_offset = dbeta( x_ShapeFactor - 0.27, ShapeFactor_beta_offset$estimate[1], ShapeFactor_beta_offset$estimate[2])
+lines(x_ShapeFactor, y_beta_offset, col = 'red')
+
+# distribution is: min(1, beta(shape1, shape2) + 0.27)
+```

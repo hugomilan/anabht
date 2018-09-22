@@ -1,0 +1,1568 @@
+---
+title: "ML_models"
+author: "Hugo Milan"
+date: "April 14, 2018"
+output: pdf_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Start libraries, load the data, and separate the data
+
+```{r}
+# ANABHT - ANAlytical solver for steady-state BioHeat Transfer problems in 1D
+# 
+# Copyright (C) 2018 by Cornell University. All Rights Reserved.
+# 
+# Written by Hugo Fernando Maia Milan.
+# 
+# Free for educational, research and non-profit purposes.
+# Refer to the license file for details.
+#
+# 
+# File:   ML_models.rmd
+# Author: Hugo Fernando Maia Milan
+# Email:  hugofernando@gmail.com
+#
+# Created on April 15, 2018.
+#
+#
+# Function description:
+# Trains the machine learning algorithms
+#
+
+# Loading libraries
+print("load libraries")
+library(h2o)
+library(rmatio) #read.mat
+library(foreign) # read.octave
+library(foreach)
+library(doMC)
+number_of_cores = 8 # if you change number_of_cores, remember to change in the function "calc_errors"" as well
+registerDoMC(number_of_cores)
+
+print("Begin Computation")
+# Set directory to where this file is
+setwd("~/OneDrive/Cornell/Publications/2018/Piglets 2013/code/V05/R/ML_training")
+
+print("Loading Data")
+data_piglets = read.csv("../../datasets/data_piglets.csv")
+# loading training and testing points. These were separated in octave
+# can throw a warning such as (but it will be fine):
+#     In read_octave_unknown(con, type) : cannot handle unknown type ‘’
+data_piglets_training = read.octave("../../datasets/trainingPosition.mat") 
+data_piglets_training = as.vector(data_piglets_training$trainingPosition)
+data_piglets_testing = read.octave("../../datasets/testingPosition.mat") 
+data_piglets_testing = as.vector(data_piglets_testing$testingPosition)
+
+# obtaining cross validation positions
+cross_validation_1 = 1:( length(data_piglets_training)/5 )
+cross_validation_2 = 1:( length(data_piglets_training)/5 )
+cross_validation_3 = 1:( length(data_piglets_training)/5 )
+cross_validation_4 = 1:( length(data_piglets_training)/5 )
+cross_validation_5 = 1:( length(data_piglets_training)/5 )
+
+for (i in 1:( length(data_piglets_training)/5 )){
+  cross_validation_1[i] = data_piglets_training[ 1 + (i - 1)*5  ]
+  cross_validation_2[i] = data_piglets_training[ 2 + (i - 1)*5  ]
+  cross_validation_3[i] = data_piglets_training[ 3 + (i - 1)*5  ]
+  cross_validation_4[i] = data_piglets_training[ 4 + (i - 1)*5  ]
+  cross_validation_5[i] = data_piglets_training[ 5 + (i - 1)*5  ]
+}
+
+
+# adding the column for Ta_brooder_increase
+i_count = 1
+data_piglets$Ta_brooder_increase = data_piglets$Ta_brooder
+for (day_i in 1:5){
+  for (hour_i in 4:7){
+    for (heat_i in 1:5){
+      data_piglets$Ta_brooder_increase[i_count:(i_count + 1)] = data_piglets$Ta_brooder_increase[i_count:(i_count + 1)] -
+                                                                data_piglets$Ta_brooder[data_piglets$Heat_source_power == 0 &
+                                                                                        data_piglets$Day == day_i &
+                                                                                        data_piglets$Hour == hour_i]
+      i_count = i_count + 2
+    }
+  }
+}
+
+all.dataset = data_piglets[c(data_piglets_training, data_piglets_testing),] # nrow(train.dataset) # 130
+train.dataset = data_piglets[data_piglets_training,] # nrow(train.dataset) # 130
+test.dataset = data_piglets[data_piglets_testing,] # nrow(test.dataset) # 43
+
+# obtaining the mean.dataset
+# obtaining descriptive statistics for the different hours and heat sources
+mean_piglets = data_piglets[1:20, c(3,5,8:16)]
+stderr_piglets = data_piglets[1:20, c(3,5,8:16)]
+n_piglets = data_piglets[1:20, c(3,5,8:16)]
+
+variable_j = 1
+for (variable in c(3,5,8:16)) {
+  heat_source_j = 1
+  for (heat_source in c(0, 60, 100, 160, 200)){
+    hour_j = 1
+    for (hour in 4:7) {
+      
+      mean_piglets[(heat_source_j - 1)*4 + hour_j, variable_j] = mean(data_piglets[data_piglets$Hour == hour & data_piglets$Heat_source_power == heat_source, variable], na.rm = T)
+      n_piglets[(heat_source_j - 1)*4 + hour_j, variable_j] = sum(!is.na(data_piglets[data_piglets$Hour == hour & data_piglets$Heat_source_power == heat_source, variable]))
+      
+      stderr_piglets[(heat_source_j - 1)*4 + hour_j, variable_j] = sd(data_piglets[data_piglets$Hour == hour & data_piglets$Heat_source_power == heat_source, variable], na.rm = T)/sqrt(n_piglets[(heat_source_j - 1)*4 + hour_j, variable_j])
+      
+      hour_j = hour_j + 1
+    }
+    heat_source_j = heat_source_j + 1
+  }
+  variable_j = variable_j + 1
+}
+
+write.csv(mean_piglets, "../../datasets/mean_values.csv", row.names = F)
+write.csv(n_piglets, "../../datasets/n_piglets.csv", row.names = F)
+write.csv(stderr_piglets, "../../datasets/stderr_piglets.csv", row.names = F)
+
+mean.dataset = mean_piglets
+
+print("Load h2o")
+h2o.init(nthreads = -1, min_mem_size = '50G')
+all.h2o =  as.h2o(all.dataset)
+train.h2o = as.h2o(train.dataset)
+test.h2o = as.h2o(test.dataset)
+mean.h2o = as.h2o(mean.dataset)
+```
+
+
+## Function that calculates the errors
+```{r}
+# this function calculates the MSE, errors and percentages for training, test, and mean dataset.
+# It assumes that the column pos_tt in train_dataset and test_dataset contain the true value
+# and also that the column pos_mean contain the true value for mean_dataset
+calc_errors <- function(models_all, train_dataset, test_dataset, mean_dataset, pos_tt, pos_mean){
+  number_of_cores = 8
+  # print("calc MSE")
+  # calculating predictions and performances
+  print("Calculating cross-validation MSE")
+  time_performance_CV_i = Sys.time()
+  performance_CV = mclapply(models_all, h2o.mse, xval = T, mc.cores = number_of_cores)
+  MSE_CV = unlist(performance_CV)
+  time_performance_CV = difftime(Sys.time(), time_performance_CV_i, units = "sec")
+  
+  print("Calculating predictions and performance for training dataset")
+  time_prediction_training_i = Sys.time()
+  predictions_training = mclapply(models_all, h2o.predict, train_dataset, mc.cores = number_of_cores)
+  time_prediction_training_e = Sys.time()
+  performance_training = mclapply(models_all, h2o.mse, mc.cores = number_of_cores)
+  MSE_training = unlist(performance_training)
+  time_performance_training_e = Sys.time()
+  time_prediction_training = difftime(time_prediction_training_e, time_prediction_training_i, units = "sec")
+  time_performance_training = difftime(time_performance_training_e, time_prediction_training_e, units = "sec") 
+  
+  print("Calculating predictions and performance for testing dataset")
+  time_prediction_testing_i = Sys.time()
+  predictions_testing = mclapply(models_all, h2o.predict, test_dataset, mc.cores = number_of_cores)
+  time_prediction_testing_e = Sys.time()
+  performance_testing = mclapply(models_all, h2o.mse, valid = T, mc.cores = number_of_cores)
+  MSE_testing = unlist(performance_testing)
+  time_performance_testing_e = Sys.time()
+  time_prediction_testing = difftime(time_prediction_testing_e, time_prediction_testing_i, units = "sec")
+  time_performance_testing = difftime(time_performance_testing_e, time_prediction_training_e, units = "sec") 
+  
+  print("Calculating predictions and performance for mean dataset")
+  time_prediction_mean_i = Sys.time()
+  predictions_mean = mclapply(models_all, h2o.predict, mean_dataset, mc.cores = number_of_cores)
+  time_prediction_mean_e = Sys.time()
+  performance_mean = mclapply(models_all, h2o.performance, mean_dataset, mc.cores = number_of_cores)
+  time_performance_mean_e = Sys.time()
+  time_prediction_mean = difftime(time_prediction_mean_e, time_prediction_mean_i, units = "sec")
+  time_performance_mean = difftime(time_performance_mean_e, time_prediction_mean_e, units = "sec")
+  
+  
+  time_errors_i = Sys.time()
+  # calculating lengths
+  length_model = length(performance_training)
+  sqrt_nrow_train = sqrt(nrow(predictions_training[[1]]))
+  sqrt_nrow_test = sqrt(nrow(predictions_testing[[1]]))
+  sqrt_nrow_mean = sqrt(nrow(predictions_mean[[1]]))
+  
+  train_dataset_values = as.data.frame(train_dataset[,pos_tt])
+  train_dataset_values = unlist(train_dataset_values)
+  test_dataset_values = as.data.frame(test_dataset[,pos_tt])
+  test_dataset_values = unlist(test_dataset_values)
+  mean_dataset_values = as.data.frame(mean_dataset[,pos_mean])
+  mean_dataset_values = unlist(mean_dataset_values)
+  
+  print("Calculating errors for each model")
+  
+  list_of_errors <- foreach (i = 1:length_model) %dopar% {
+    MSE_mean = performance_mean[[i]]@metrics$MSE
+    
+    
+    # predictions for errors
+    # getting values
+    predictions_training_i = as.data.frame(predictions_training[[i]])
+    predictions_training_i = unlist(predictions_training_i)
+    predictions_testing_i = as.data.frame(predictions_testing[[i]])
+    predictions_testing_i = unlist(predictions_testing_i)
+    predictions_mean_i = as.data.frame(predictions_mean[[i]])
+    predictions_mean_i = unlist(predictions_mean_i)
+    
+    # training errors
+    error_training_mean = mean( abs(predictions_training_i - train_dataset_values ) )
+    error_training_SEM = sd(predictions_training_i - train_dataset_values )/sqrt_nrow_train
+    error_training_max = max( abs(predictions_training_i - train_dataset_values ) )
+    
+    error_training_percent_mean = mean( abs(predictions_training_i - train_dataset_values )/train_dataset_values*100 )
+    error_training_percent_SEM = sd( (predictions_training_i - train_dataset_values)/train_dataset_values*100 )/sqrt_nrow_train
+    error_training_percent_max = max( abs(predictions_training_i - train_dataset_values )/train_dataset_values*100 )
+    
+    
+    
+    # print("save prediction errors for testing")
+    error_testing_mean = mean( abs(predictions_testing_i - test_dataset_values ) )
+    error_testing_SEM = sd(predictions_testing_i - test_dataset_values )/sqrt_nrow_test
+    error_testing_max  = max( abs(predictions_testing_i - test_dataset_values ) )
+    
+    
+    error_testing_percent_mean = mean( abs(predictions_testing_i - test_dataset_values )/test_dataset_values*100 )
+    error_testing_percent_SEM = sd( (predictions_testing_i - test_dataset_values)/test_dataset_values*100 )/sqrt_nrow_test
+    error_testing_percent_max = max( abs(predictions_testing_i - test_dataset_values )/test_dataset_values*100 )
+    
+    
+    # print("save prediction errors for mean")
+    error_mean_mean = mean( abs(predictions_mean_i - mean_dataset_values ) )
+    error_mean_SEM = sd(predictions_mean_i - mean_dataset_values )/sqrt_nrow_mean
+    error_mean_max = max( abs(predictions_mean_i - mean_dataset_values ) )
+    
+    error_mean_percent_mean = mean( abs(predictions_mean_i - mean_dataset_values )/mean_dataset_values*100 )
+    error_mean_percent_SEM = sd( (predictions_mean_i - mean_dataset_values)/mean_dataset_values*100 )/sqrt_nrow_mean
+    error_mean_percent_max = max( abs(predictions_mean_i - mean_dataset_values )/mean_dataset_values*100 )
+    
+    return( c(MSE_mean,
+              error_training_mean, error_training_SEM, error_training_max,
+              error_training_percent_mean, error_training_percent_SEM, error_training_percent_max,
+              error_testing_mean, error_testing_SEM, error_testing_max,
+              error_testing_percent_mean, error_testing_percent_SEM, error_testing_percent_max,
+              error_mean_mean, error_mean_SEM, error_mean_max,
+              error_mean_percent_mean, error_mean_percent_SEM, error_mean_percent_max) )
+  }
+  time_errors = difftime(Sys.time(), time_errors_i, units = "sec")
+  
+  matrix_errors = cbind( MSE_CV, MSE_training, MSE_testing, matrix(unlist(list_of_errors), ncol = 19, byrow = T) )
+  vector_times = c(time_performance_CV,
+                   time_prediction_training, time_performance_training,
+                   time_prediction_testing, time_performance_testing,
+                   time_prediction_mean, time_performance_mean,time_errors)
+  
+  
+  print("Done calculating errors for each model")
+  return(list(matrix_errors, vector_times))
+}
+
+
+# wraper for getting the model ids for algorithms that use grid
+# the ones that do not
+getModelId <- function(models, n_cores){
+  # checking if it is was runned using the native algorithm
+  # or if it was run using grid
+  if (length(models) == 1){
+    # have run using grid and got n models
+    return( mclapply(as.character(models@model_ids), h2o.getModel, mc.cores = n_cores) )
+    
+  } else if (.hasSlot(models[[1]], "algorithm")){
+    # have run using the native algorithm
+    return( mclapply(models, getModelId_algo, mc.cores = n_cores) )
+    
+  } else{
+    # have run using grid and got output as a list
+    return( mclapply(models, getModelId_grid_1, mc.cores = n_cores) )
+    
+  }
+}
+
+# return the model id for models runned using the native algorithm
+getModelId_algo <- function(model){
+  return( h2o.getModel( model@model_id ) )
+}
+
+# return the model id for models runned using grid for only one model
+getModelId_grid_1 <- function(model){
+  return( h2o.getModel( model@model_ids[[1]] ) )
+}
+
+
+# function to get grids running in parallel
+parallel.general.grid = function(seed, ...){
+  model = h2o.grid(..., search_criteria = list(strategy = "RandomDiscrete", max_models = 1,
+                                               seed = seed))
+  return(model)
+  
+}
+
+# function to do deep learning in parallel
+parallel.deep.learning = function(seed, layers_DL, hidden_DL, epsilon_DL, rho_DL,
+                                  epochs_DL, mini_batch_size_DL, hidden_dropout_DL,
+                                  max_runtime_secs_DL,
+                                  X, Y, train, test, distribution_DL, fast_mode_DL,
+                                  activation_function_DL,
+                                  reproducible_DL, nfolds_DL) {
+  set.seed(seed)
+  # random search for hyperparameters
+  layers_temp <- sample(layers_DL, 1)
+  hidden_temp <- sample(hidden_DL, layers_temp, replace=TRUE)
+  epsilon_temp <- sample(epsilon_DL, 1)
+  rho_temp <- sample(rho_DL, 1)
+  epochs_temp <- sample(epochs_DL, 1)
+  mini_batch_size_temp <- sample(mini_batch_size_DL, 1)
+  hidden_dropout_temp <- sample(hidden_dropout_DL, layers_temp, replace=TRUE)
+  
+  # running the model
+  model <- h2o.deeplearning(x=X, y=Y, training_frame = train, validation_frame = test,
+                            distribution = distribution_DL, hidden = hidden_temp,
+                            epsilon = epsilon_temp,
+                            rho = rho_temp, epochs = epochs_temp, 
+                            mini_batch_size = mini_batch_size_temp,
+                            hidden_dropout = hidden_dropout_temp, 
+                            max_runtime_secs = max_runtime_secs_DL,
+                            fast_mode = fast_mode_DL,
+                            activation = activation_function_DL,
+                            reproducible = reproducible_DL, seed = seed,
+                            keep_cross_validation_predictions = TRUE,
+                            nfolds = nfolds_DL, fold_assignment = "Modulo")
+  return(model)
+}
+
+```
+
+
+## Start running for the variables
+```{r}
+# independent and dependent variables
+X.list = list()
+X.list[[1]] = c(5, 13) # c("Heat_source_power", "Ta_pen") # heat_source_power, Ta_pen
+X.list[[2]] = c(5, 10) # c("Heat_source_power", "Ta_brooder") # heat_source_power, Ta_brooder
+X.list[[3]] = c(5, 10, 12) # c("Heat_source_power", "Ta_brooder", "Tg_brooder") # heat_source_power, Ta_brooder, Tg_brooder
+X.list[[4]] = c(5, 13) # c("Heat_source_power", "Ta_pen") # heat_source_power, Ta_pen
+X.list[[5]] = c(5, 13) # c("Heat_source_power", "Ta_pen") # heat_source_power, Ta_pen
+X.list[[6]] = c(5, 10) # c("Heat_source_power", "Ta_brooder") # heat_source_power, Ta_brooder
+interaction_list = list()
+interaction_list[[1]] = c("Heat_source_power", "Ta_pen")
+interaction_list[[2]] = c("Heat_source_power", "Ta_brooder")
+interaction_list[[3]] = c("Heat_source_power", "Ta_brooder", "Tg_brooder")
+interaction_list[[4]] = c("Heat_source_power", "Ta_pen")
+interaction_list[[5]] = c("Heat_source_power", "Ta_pen")
+interaction_list[[6]] = c("Heat_source_power", "Ta_brooder")
+variableName = c("Ta_brooder", "Tg_brooder", "Tr", "Tg_brooder_Ta_pen", "Tr_Ta_pen", "Tr_Ta_brooder")
+
+ys = c("Ta_brooder", "Tg_brooder", "Tr", "Tg_brooder", "Tr", "Tr") # c(10, 12, 8) # Ta_brooder, Tg_brooder, Tr, Tg_brooder, Tr, Tr
+ys_mean = c(5, 7, 3, 7, 3, 3) # Ta_brooder, Tg_brooder, Tr, Tg_brooder, Tr, Tr
+
+# number of models
+
+# GLM parameters
+alpha_GLM <- seq(0, 1, .000001)
+lambda_GLM <- 10^(seq(-10, 0, 0.00001))
+number_of_GLM_models = 1000
+seeds_GLM = 1:number_of_GLM_models # the length of the seeds_GLM defines the number of models
+family_GLM = "gaussian" # Qualitatively appears to be normally distributed data
+max_iterations_GLM = 200
+nfolds_GLM = 5
+lambda_search_GLM = FALSE # lambda_search_GLM = TRUE was faster but yielded worser models
+nlambdas_GLM = 1000 # number of lambdas to search if lambda_search_GLM = TRUE
+use_grid_all_GLM = TRUE # should all models be trained in the grid or each model individually?
+max_runtime_secs_GLM = 0*( 1 + (number_of_GLM_models - 1)*use_grid_all_GLM ) # the time each model will at most run in seconds. If using grid_all, we multiply the time by the number of models
+train_GLM = TRUE
+
+# RF parameters 
+number_of_RF_models = 1000
+seeds_RF = 1:number_of_RF_models # the length of the seeds_RF defines the number of models
+min_rows_RF <- 1:30
+ntrees_RF <- 10:250
+max_depth_RF <- 1:100
+distribution_RF <- "gaussian"
+#mtries_RF <- 1:length(X)
+nfolds_RF = 5
+max_runtime_secs_RF = 0 # the time each model will at most run in seconds
+train_RF = TRUE
+
+# GBM parameters
+number_of_GBM_models = 1000
+seeds_GBM = 1:number_of_GBM_models # the length of the seeds_GBM defines the number of models
+min_rows_GBM <- 1:20
+ntrees_GBM <- 1:100
+max_depth_GBM <- 1:100
+distribution_GBM <- "gaussian"
+learn_rate_GBM <- seq(0.001, 1, 0.001)
+learn_rate_annealing_GBM <- seq(0.8, 1, .001)
+nfolds_GBM = 5
+max_runtime_secs_GBM = 0 # the time each model will at most run in seconds
+train_GBM = TRUE
+
+# DL paramenters
+number_of_DL_models = 2000
+seeds_DL = 1:number_of_DL_models # the length of the seeds_GBM defines the number of models
+layers_DL = 1:10
+hidden_DL = 1:250
+epsilon_DL <- 10^seq(-10, -6, .000001)
+rho_DL <- seq(.75, .999, .000001)
+distribution_DL <- "gaussian"
+epochs_DL <- 1:10000
+mini_batch_size_DL <- 1:nrow(train.dataset)
+fast_mode_DL <- FALSE
+reproducible_DL <- TRUE # running with FALSE didn't converge (didn't want to wait to see if it would)
+hidden_dropout_DL <- seq(0, .33, .01)
+# Cannot grid mini-batch-size
+activation_function_DL <- "RectifierWithDropout"
+nfolds_DL = 5
+max_runtime_secs_DL = 0 # the time each model will at most run in seconds
+train_DL = TRUE
+
+# total number of models
+number_of_models = c(number_of_GLM_models, number_of_RF_models,
+                     number_of_GBM_models, number_of_DL_models) # GLM, RF, GBM, DL
+total_number_of_models = sum(number_of_models)
+
+# creating things for the loop
+
+# dataset for all models
+nVariblesToPredict = length(X.list)
+MSE_all_dataset = data.frame(algorithm = rep( c( rep("GLM", number_of_GLM_models), rep("RF", number_of_RF_models), rep("GBM", number_of_GBM_models), rep("DL", number_of_DL_models) ), nVariblesToPredict),
+                             model = rep(c(1:number_of_GLM_models, 1:number_of_RF_models, 1:number_of_GBM_models, 1:number_of_DL_models), nVariblesToPredict),
+                             MSE_CV = rep(Inf, total_number_of_models*nVariblesToPredict),
+                             MSE_training = rep(Inf, total_number_of_models*nVariblesToPredict),
+                             MSE_testing = rep(Inf, total_number_of_models*nVariblesToPredict),
+                             MSE_mean = rep(Inf, total_number_of_models*nVariblesToPredict),
+                             error_training_mean = rep(Inf, total_number_of_models*nVariblesToPredict),
+                             error_training_SEM = rep(Inf, total_number_of_models*nVariblesToPredict),
+                             error_training_max = rep(Inf, total_number_of_models*nVariblesToPredict),
+                             error_training_percent_mean = rep(Inf, total_number_of_models*nVariblesToPredict),
+                             error_training_percent_SEM = rep(Inf, total_number_of_models*nVariblesToPredict),
+                             error_training_percent_max = rep(Inf, total_number_of_models*nVariblesToPredict),
+                             error_testing_mean = rep(Inf, total_number_of_models*nVariblesToPredict),
+                             error_testing_SEM = rep(Inf, total_number_of_models*nVariblesToPredict), 
+                             error_testing_max = rep(Inf, total_number_of_models*nVariblesToPredict),
+                             error_testing_percent_mean = rep(Inf, total_number_of_models*nVariblesToPredict),
+                             error_testing_percent_SEM = rep(Inf, total_number_of_models*nVariblesToPredict),
+                             error_testing_percent_max = rep(Inf, total_number_of_models*nVariblesToPredict),
+                             error_mean_mean = rep(Inf, total_number_of_models*nVariblesToPredict), 
+                             error_mean_SEM = rep(Inf, total_number_of_models*nVariblesToPredict), 
+                             error_mean_max = rep(Inf, total_number_of_models*nVariblesToPredict),
+                             error_mean_percent_mean = rep(Inf, total_number_of_models*nVariblesToPredict),
+                             error_mean_percent_SEM = rep(Inf, total_number_of_models*nVariblesToPredict),
+                             error_mean_percent_max = rep(Inf, total_number_of_models*nVariblesToPredict))
+# total_number_of_models x nVariblesToPredict predicting variables
+
+# only for the best models + times and other stuffs. Best model is defined as the onw that minimizes MSE_CV
+MSE_best_dataset = data.frame(algorithm = rep( c("GLM", "RF", "GBM", "DL"), nVariblesToPredict),
+                              model = rep(0, 4*nVariblesToPredict),
+                              MSE_CV = rep(Inf, 4*nVariblesToPredict),
+                              MSE_training = rep(Inf, 4*nVariblesToPredict),
+                              MSE_testing = rep(Inf, 4*nVariblesToPredict), 
+                              MSE_mean = rep(Inf, 4*nVariblesToPredict),
+                              error_training_mean = rep(Inf, 4*nVariblesToPredict),
+                              error_training_SEM = rep(Inf, 4*nVariblesToPredict),
+                              error_training_max = rep(Inf, 4*nVariblesToPredict),
+                              error_training_percent_mean = rep(Inf, 4*nVariblesToPredict),
+                              error_training_percent_SEM = rep(Inf, 4*nVariblesToPredict),
+                              error_training_percent_max = rep(Inf, 4*nVariblesToPredict),
+                              error_testing_mean = rep(Inf, 4*nVariblesToPredict),
+                              error_testing_SEM = rep(Inf, 4*nVariblesToPredict), 
+                              error_testing_max = rep(Inf, 4*nVariblesToPredict), 
+                              error_testing_percent_mean = rep(Inf, 4*nVariblesToPredict),
+                              error_testing_percent_SEM = rep(Inf, 4*nVariblesToPredict),
+                              error_testing_percent_max = rep(Inf, 4*nVariblesToPredict),
+                              error_mean_mean = rep(Inf, 4*nVariblesToPredict), 
+                              error_mean_SEM = rep(Inf, 4*nVariblesToPredict),
+                              error_mean_max = rep(Inf, 4*nVariblesToPredict),
+                              error_mean_percent_mean = rep(Inf, 4*nVariblesToPredict), 
+                              error_mean_percent_SEM = rep(Inf, 4*nVariblesToPredict), 
+                              error_mean_percent_max = rep(Inf, 4*nVariblesToPredict),
+                              algorithm_run_time = rep(Inf, 4*nVariblesToPredict),
+                              time_performance_CV = rep(Inf, 4*nVariblesToPredict),
+                              time_prediction_training = rep(Inf, 4*nVariblesToPredict),
+                              time_performance_training = rep(Inf, 4*nVariblesToPredict),
+                              time_prediction_testing = rep(Inf, 4*nVariblesToPredict),
+                              time_performance_testing = rep(Inf, 4*nVariblesToPredict),
+                              time_prediction_mean = rep(Inf, 4*nVariblesToPredict),
+                              time_performance_mean = rep(Inf, 4*nVariblesToPredict),
+                              time_errors = rep(Inf, 4*nVariblesToPredict),
+                              n_models = rep(0, 4*nVariblesToPredict),
+                              n_training = rep(nrow(train.dataset), 4*nVariblesToPredict),
+                              n_testing = rep(nrow(test.dataset), 4*nVariblesToPredict),
+                              n_mean = rep(nrow(mean.dataset), 4*nVariblesToPredict))
+
+
+
+
+
+
+
+
+
+
+
+for (it in 1:nVariblesToPredict){ # it goes for the different predictors
+  Y <- ys[it] # variable to predict
+  X <- X.list[[it]] # variable to predict
+  interactions_GLM = interaction_list[[it]]
+  # updating parameters for RF
+  mtries_RF <- 1:length(X)
+  
+  for (algo in 1:4) {
+    algorithm_run_time_i = Sys.time()
+    if (algo == 1) {
+      # if we are not going to train GLM, we go to the next algorithm
+      if (!train_GLM){
+        next
+      }
+      # GLM
+      print("begin penalized linear regression")
+      
+      if (use_grid_all_GLM){
+        modelGrid <- h2o.grid(algorithm = "glm", x=X, y=Y, training_frame = train.h2o,
+                              validation_frame = test.h2o, family = family_GLM, 
+                              hyper_params = list(alpha = alpha_GLM, lambda = lambda_GLM),
+                              search_criteria = list(strategy = "RandomDiscrete", 
+                                                     max_models = number_of_GLM_models,
+                                                     seed = seeds_GLM[1]),
+                              keep_cross_validation_predictions = TRUE,
+                              lambda_search = lambda_search_GLM,
+                              max_iterations = max_iterations_GLM,
+                              max_runtime_secs = max_runtime_secs_GLM,
+                              nfolds = nfolds_GLM, 
+                              fold_assignment = "Modulo", 
+                              nlambdas = nlambdas_GLM,
+                              remove_collinear_columns=TRUE,
+                              interactions = interactions_GLM)
+      } else {
+        modelGrid = pbmcmapply(parallel.general.grid, seed = seeds_GLM, MoreArgs = list(
+          algorithm = "glm", x=X, y=Y, training_frame = train.h2o,
+          validation_frame = test.h2o,
+          family = family_GLM,
+          hyper_params = list(alpha = alpha_GLM, lambda = lambda_GLM),
+          max_iterations = max_iterations_GLM,
+          max_runtime_secs = max_runtime_secs_GLM,
+          keep_cross_validation_predictions = TRUE,
+          nfolds = nfolds_GLM, fold_assignment = "Modulo",
+          remove_collinear_columns=TRUE,
+          lambda_search = lambda_search_GLM,
+          nlambdas = nlambdas_GLM), mc.cores = number_of_cores)
+      }
+      
+      
+      
+      
+      model_name = "penalized linear models"
+      folder_root = "GLM"
+      print("finished penalized linear regression")
+      
+      
+      
+      
+    } else if (algo == 2) {
+      # if we are not going to train RF, we go to the next algorithm
+      if (!train_RF){
+        next
+      }
+      # Random Forests
+      print("begin random forests")
+      
+      modelGrid = pbmcmapply(parallel.general.grid, seed = seeds_RF, MoreArgs = list(
+        algorithm = "randomForest", x=X, y=Y, training_frame = train.h2o,
+        validation_frame = test.h2o,
+        distribution = distribution_RF,
+        keep_cross_validation_predictions = TRUE,
+        max_runtime_secs = max_runtime_secs_RF,
+        hyper_params = list(min_rows = min_rows_RF,
+                            max_depth = max_depth_RF,
+                            mtries = mtries_RF,
+                            ntrees = ntrees_RF),
+        nfolds = nfolds_RF, fold_assignment = "Modulo"),
+        mc.cores = number_of_cores)
+      
+      model_name = "random forests"
+      folder_root = "RF"
+      print("finished random forests")
+      
+      
+      
+      
+      
+      
+    } else if (algo == 3) {
+      # if we are not going to train GBM, we go to the next algorithm
+      if (!train_GBM){
+        next
+      }
+      # GBMs
+      print("begin gradient boosted machines")
+      
+      modelGrid = pbmcmapply(parallel.general.grid, seed = seeds_GBM, MoreArgs = list(
+        algorithm = "gbm", x=X, y=Y, training_frame = train.h2o,
+        validation_frame = test.h2o,
+        distribution = distribution_GBM,
+        keep_cross_validation_predictions = TRUE,
+        max_runtime_secs = max_runtime_secs_GBM,
+        hyper_params = list(min_rows = min_rows_GBM,
+                            max_depth = max_depth_GBM,
+                            learn_rate = learn_rate_GBM,
+                            ntrees = ntrees_GBM,
+                            learn_rate_annealing = learn_rate_annealing_GBM),
+        nfolds = nfolds_GBM, fold_assignment = "Modulo"),
+        mc.cores = number_of_cores)
+      
+      model_name = "gradient boosted machines"
+      folder_root = "GBM"
+      print("finished gradient boosted machines")
+      
+    } else if (algo == 4) {
+      # if we are not going to train DL, we go to the next algorithm
+      if (!train_DL){
+        next
+      }
+      
+      # DL
+      print("begin deep learning")
+      
+      modelGrid = pbmcmapply(parallel.deep.learning, seed = seeds_DL,
+                             MoreArgs = list(layers_DL = layers_DL, hidden_DL = hidden_DL,
+                                             epsilon_DL = epsilon_DL, rho_DL = rho_DL,
+                                             epochs_DL = epochs_DL,
+                                             mini_batch_size_DL = mini_batch_size_DL,
+                                             hidden_dropout_DL = hidden_dropout_DL,
+                                             max_runtime_secs_DL = max_runtime_secs_DL,
+                                             X = X, Y = Y, train = train.h2o, test = test.h2o,
+                                             distribution_DL = distribution_DL, 
+                                             fast_mode_DL = fast_mode_DL,
+                                             activation_function_DL = activation_function_DL,
+                                             reproducible_DL = reproducible_DL, 
+                                             nfolds_DL = nfolds_DL), mc.cores = number_of_cores)
+      
+      model_name = "deep learning"
+      folder_root = "DL"
+      print("finished deep learning")
+      
+    }
+    
+    algorithm_run_time = difftime(Sys.time(), algorithm_run_time_i, units = "sec")
+    
+    print(paste0("saving ", model_name))
+    
+    # getting the models names
+    models_all = getModelId(modelGrid, number_of_cores)
+    
+    # saving the models
+    path_names = mcmapply(paste0, folder_root, "/", variableName[it], "/", 1:number_of_models[algo])
+    paths = mcmapply(h2o.saveModel, object = models_all, path = path_names, force = TRUE, mc.cores = 8)
+    # save the location of the models
+    write.csv(paths, paste0(folder_root, "_", variableName[it], "_paths.csv"))
+    
+    
+    print(paste0("calculating errors in ", model_name))
+    initial_position = sum(c(1, number_of_models[0:(algo-1)] )) + sum(number_of_models)*(it - 1)
+    final_position = sum(number_of_models[0:algo] ) + sum(number_of_models)*(it - 1)
+    # Compensenting for cases where we might not find all models
+    if (final_position - initial_position > length(models_all)){
+      final_position = initial_position + length(models_all) - 1
+    }
+    output_calc_errors = calc_errors(models_all, train.h2o, test.h2o, mean.h2o, ys[it], ys_mean[it])
+    
+    MSE_all_dataset[initial_position:final_position, 3:ncol(MSE_all_dataset)] = output_calc_errors[[1]]
+    
+    # get the minimum MSE training location
+    MSE_best_dataset[algo + 4*(it - 1), 1:(ncol(MSE_best_dataset) - 3) ] = c( MSE_all_dataset[which.min(MSE_all_dataset$MSE_CV[initial_position:final_position]) + initial_position - 1, ], algorithm_run_time, output_calc_errors[[2]], length(models_all))
+    
+    # let's clean up h2o to save ram memory
+    h2o.rm(as.character(h2o.ls()))
+    gc() # calling garbage collector
+    
+    # saving partial results
+    write.csv(MSE_all_dataset, paste0("MSE_all_dataset_it_", it, "_algo_", algo,".csv"), row.names = F)
+    write.csv(MSE_best_dataset, paste0("MSE_best_dataset_it_", it, "_algo_", algo,".csv"), row.names = F)
+    
+    print(paste0("Done calculating ", folder_root, "_", variableName[it]))
+    
+  }
+}
+
+
+
+
+
+
+# saving the final outputs
+write.csv(MSE_all_dataset, "MSE_all_dataset.csv", row.names = F)
+write.csv(MSE_best_dataset, "MSE_best_dataset.csv", row.names = F)
+```
+
+```{r}
+# Updating the best models with all the data
+
+# GLM Ta_brooder
+GLM_Ta_brooder = h2o.loadModel("Best ML models/GLM_Ta_brooder")
+GLM_Ta_brooder_all = h2o.glm(x = X.list[[1]], y = ys[1], training_frame = all.h2o,
+                             family = family_GLM, alpha = alpha_GLM[1], lambda = lambda_GLM[1],
+                             lambda_search = lambda_search_GLM, max_iterations = max_iterations_GLM,
+                             max_runtime_secs = max_runtime_secs_GLM, nfolds = nfolds_GLM,
+                             fold_assignment = "Modulo", nlambdas = 1,
+                             remove_collinear_columns=TRUE,
+                             interactions = interaction_list[[1]])
+h2o.saveModel(GLM_Ta_brooder_all, "GLM/Ta_brooder/all")
+h2o.saveMojo(GLM_Ta_brooder_all, "Best ML models/GLM_Ta_brooder_all.MOJO")
+
+# GLM Tg_brooder
+GLM_Tg_brooder = h2o.loadModel("Best ML models/GLM_Tg_brooder")
+GLM_Tg_brooder_all = h2o.glm(x = X.list[[2]], y = ys[2], training_frame = all.h2o,
+                             family = family_GLM, alpha = alpha_GLM[1], lambda = lambda_GLM[1],
+                             lambda_search = lambda_search_GLM, max_iterations = max_iterations_GLM,
+                             max_runtime_secs = max_runtime_secs_GLM, nfolds = nfolds_GLM,
+                             fold_assignment = "Modulo", nlambdas = 1,
+                             remove_collinear_columns=TRUE,
+                             interactions = interaction_list[[2]])
+h2o.saveModel(GLM_Tg_brooder_all, "GLM/Tg_brooder/all")
+h2o.saveMojo(GLM_Tg_brooder_all, "Best ML models/GLM_Tg_brooder_all.MOJO")
+
+# GLM Tr
+GLM_Tr = h2o.loadModel("Best ML models/GLM_Tr")
+GLM_Tr_all = h2o.glm(x = X.list[[3]], y = ys[3], training_frame = all.h2o,
+                             family = family_GLM, alpha = alpha_GLM[1], lambda = lambda_GLM[1],
+                             lambda_search = lambda_search_GLM, max_iterations = max_iterations_GLM,
+                             max_runtime_secs = max_runtime_secs_GLM, nfolds = nfolds_GLM,
+                             fold_assignment = "Modulo", nlambdas = 1,
+                             remove_collinear_columns=TRUE,
+                             interactions = interaction_list[[3]])
+h2o.saveModel(GLM_Tr_all, "GLM/Tr/all")
+h2o.saveMojo(GLM_Tr_all, "Best ML models/GLM_Tr_all.MOJO")
+
+# GLM Tg_brooder_Ta_pen
+GLM_Tg_brooder_Ta_pen = h2o.loadModel("Best ML models/GLM_Tg_brooder_Ta_pen")
+GLM_Tg_brooder_Ta_pen_all = h2o.glm(x = X.list[[4]], y = ys[4], training_frame = all.h2o,
+                             family = family_GLM, alpha = alpha_GLM[1], lambda = lambda_GLM[1],
+                             lambda_search = lambda_search_GLM, max_iterations = max_iterations_GLM,
+                             max_runtime_secs = max_runtime_secs_GLM, nfolds = nfolds_GLM,
+                             fold_assignment = "Modulo", nlambdas = 1,
+                             remove_collinear_columns=TRUE,
+                             interactions = interaction_list[[1]])
+h2o.saveModel(GLM_Tg_brooder_Ta_pen_all, "GLM/Tg_brooder_Ta_pen/all")
+h2o.saveMojo(GLM_Tg_brooder_Ta_pen_all, "Best ML models/GLM_Tg_brooder_Ta_pen_all.MOJO")
+
+# GLM Tr_Ta_pen
+GLM_Tr_Ta_pen = h2o.loadModel("Best ML models/GLM_Tr_Ta_pen")
+GLM_Tr_Ta_pen_all = h2o.glm(x = X.list[[5]], y = ys[5], training_frame = all.h2o,
+                             family = family_GLM, alpha = alpha_GLM[1], lambda = lambda_GLM[1],
+                             lambda_search = lambda_search_GLM, max_iterations = max_iterations_GLM,
+                             max_runtime_secs = max_runtime_secs_GLM, nfolds = nfolds_GLM,
+                             fold_assignment = "Modulo", nlambdas = 1,
+                             remove_collinear_columns=TRUE,
+                             interactions = interaction_list[[5]])
+h2o.saveModel(GLM_Tr_Ta_pen_all, "GLM/Tr_Ta_pen/all")
+h2o.saveMojo(GLM_Tr_Ta_pen_all, "Best ML models/GLM_Tr_Ta_pen_all.MOJO")
+
+# GLM Tr_Ta_brooder
+GLM_Tr_Ta_brooder = h2o.loadModel("Best ML models/GLM_Tr_Ta_brooder")
+GLM_Tr_Ta_brooder_all = h2o.glm(x = X.list[[6]], y = ys[6], training_frame = all.h2o,
+                             family = family_GLM, alpha = alpha_GLM[1], lambda = lambda_GLM[1],
+                             lambda_search = lambda_search_GLM, max_iterations = max_iterations_GLM,
+                             max_runtime_secs = max_runtime_secs_GLM, nfolds = nfolds_GLM,
+                             fold_assignment = "Modulo", nlambdas = 1,
+                             remove_collinear_columns=TRUE,
+                             interactions = interaction_list[[6]])
+h2o.saveModel(GLM_Tr_Ta_brooder_all, "GLM/Tr_Ta_brooder/all")
+h2o.saveMojo(GLM_Tr_Ta_brooder_all, "Best ML models/GLM_Tr_Ta_brooder_all.MOJO")
+
+
+
+
+# RF Ta_brooder
+RF_Ta_brooder = h2o.loadModel("Best ML models/RF_Ta_brooder")
+RF_Ta_brooder_all.grid = parallel.general.grid(seed = 591, algorithm = "randomForest", 
+                                          x=X.list[[1]], y=ys[1], training_frame = all.h2o,
+                                          distribution = distribution_RF,
+                                          keep_cross_validation_predictions = TRUE,
+                                          max_runtime_secs = max_runtime_secs_RF,
+        hyper_params = list(min_rows = min_rows_RF,
+                            max_depth = max_depth_RF,
+                            mtries = 1:length(X.list[[1]]),
+                            ntrees = ntrees_RF),
+        nfolds = nfolds_RF, fold_assignment = "Modulo")
+RF_Ta_brooder_all = h2o.getModel(RF_Ta_brooder_all.grid@model_ids[[1]])
+h2o.saveModel(RF_Ta_brooder_all, "RF/Ta_brooder/all")
+h2o.saveMojo(RF_Ta_brooder_all, "Best ML models/RF_Ta_brooder_all.MOJO")
+
+# RF Tg_brooder
+RF_Tg_brooder = h2o.loadModel("Best ML models/RF_Tg_brooder")
+RF_Tg_brooder_all.grid = parallel.general.grid(seed = 668, algorithm = "randomForest", 
+                                          x=X.list[[2]], y=ys[2], training_frame = all.h2o,
+                                          distribution = distribution_RF,
+                                          keep_cross_validation_predictions = TRUE,
+                                          max_runtime_secs = max_runtime_secs_RF,
+        hyper_params = list(min_rows = min_rows_RF,
+                            max_depth = max_depth_RF,
+                            mtries = 1:length(X.list[[2]]),
+                            ntrees = ntrees_RF),
+        nfolds = nfolds_RF, fold_assignment = "Modulo")
+RF_Tg_brooder_all = h2o.getModel(RF_Tg_brooder_all.grid@model_ids[[1]])
+h2o.saveModel(RF_Tg_brooder_all, "RF/Tg_brooder/all")
+h2o.saveMojo(RF_Tg_brooder_all, "Best ML models/RF_Tg_brooder_all.MOJO")
+
+# RF Tr
+RF_Tr = h2o.loadModel("Best ML models/RF_Tr")
+RF_Tr_all.grid = parallel.general.grid(seed = 488, algorithm = "randomForest", 
+                                          x=X.list[[3]], y=ys[3], training_frame = all.h2o,
+                                          distribution = distribution_RF,
+                                          keep_cross_validation_predictions = TRUE,
+                                          max_runtime_secs = max_runtime_secs_RF,
+        hyper_params = list(min_rows = min_rows_RF,
+                            max_depth = max_depth_RF,
+                            mtries = 1:length(X.list[[3]]),
+                            ntrees = ntrees_RF),
+        nfolds = nfolds_RF, fold_assignment = "Modulo")
+RF_Tr_all = h2o.getModel(RF_Tr_all.grid@model_ids[[1]])
+h2o.saveModel(RF_Tr_all, "RF/Tr/all")
+h2o.saveMojo(RF_Tr_all, "Best ML models/RF_Tr_all.MOJO")
+
+# RF Tg_brooder_Ta_pen
+RF_Tg_brooder_Ta_pen = h2o.loadModel("Best ML models/RF_Tg_brooder_Ta_pen")
+RF_Tg_brooder_Ta_pen_all.grid = parallel.general.grid(seed = 402, algorithm = "randomForest", 
+                                          x=X.list[[4]], y=ys[4], training_frame = all.h2o,
+                                          distribution = distribution_RF,
+                                          keep_cross_validation_predictions = TRUE,
+                                          max_runtime_secs = max_runtime_secs_RF,
+        hyper_params = list(min_rows = min_rows_RF,
+                            max_depth = max_depth_RF,
+                            mtries = 1:length(X.list[[4]]),
+                            ntrees = ntrees_RF),
+        nfolds = nfolds_RF, fold_assignment = "Modulo")
+RF_Tg_brooder_Ta_pen_all = h2o.getModel(RF_Tg_brooder_Ta_pen_all.grid@model_ids[[1]])
+h2o.saveModel(RF_Tg_brooder_Ta_pen_all, "RF/Tg_brooder_Ta_pen/all")
+h2o.saveMojo(RF_Tg_brooder_Ta_pen_all, "Best ML models/RF_Tg_brooder_Ta_pen_all.MOJO")
+
+# RF Tr_Ta_pen
+RF_Tr_Ta_pen = h2o.loadModel("Best ML models/RF_Tr_Ta_pen")
+RF_Tr_Ta_pen_all.grid = parallel.general.grid(seed = 48, algorithm = "randomForest", 
+                                          x=X.list[[5]], y=ys[5], training_frame = all.h2o,
+                                          distribution = distribution_RF,
+                                          keep_cross_validation_predictions = TRUE,
+                                          max_runtime_secs = max_runtime_secs_RF,
+        hyper_params = list(min_rows = min_rows_RF,
+                            max_depth = max_depth_RF,
+                            mtries = 1:length(X.list[[5]]),
+                            ntrees = ntrees_RF),
+        nfolds = nfolds_RF, fold_assignment = "Modulo")
+RF_Tr_Ta_pen_all = h2o.getModel(RF_Tr_Ta_pen_all.grid@model_ids[[1]])
+h2o.saveModel(RF_Tr_Ta_pen_all, "RF/Tr_Ta_pen/all")
+h2o.saveMojo(RF_Tr_Ta_pen_all, "Best ML models/RF_Tr_Ta_pen_all.MOJO")
+
+# RF Tr_Ta_brooder
+RF_Tr_Ta_brooder = h2o.loadModel("Best ML models/RF_Tr_Ta_brooder")
+RF_Tr_Ta_brooder_all.grid = parallel.general.grid(seed = 989, algorithm = "randomForest", 
+                                          x=X.list[[6]], y=ys[6], training_frame = all.h2o,
+                                          distribution = distribution_RF,
+                                          keep_cross_validation_predictions = TRUE,
+                                          max_runtime_secs = max_runtime_secs_RF,
+        hyper_params = list(min_rows = min_rows_RF,
+                            max_depth = max_depth_RF,
+                            mtries = 1:length(X.list[[6]]),
+                            ntrees = ntrees_RF),
+        nfolds = nfolds_RF, fold_assignment = "Modulo")
+RF_Tr_Ta_brooder_all = h2o.getModel(RF_Tr_Ta_brooder_all.grid@model_ids[[1]])
+h2o.saveModel(RF_Tr_Ta_brooder_all, "RF/Tr_Ta_brooder/all")
+h2o.saveMojo(RF_Tr_Ta_brooder_all, "Best ML models/RF_Tr_Ta_brooder_all.MOJO")
+
+
+
+
+# GBM Ta_brooder
+GBM_Ta_brooder = h2o.loadModel("Best ML models/GBM_Ta_brooder")
+GBM_Ta_brooder_all.grid = parallel.general.grid(seed = 800, algorithm = "gbm", 
+                                          x=X.list[[1]], y=ys[1], training_frame = all.h2o,
+                                          distribution = distribution_GBM,
+                                          keep_cross_validation_predictions = TRUE,
+                                          max_runtime_secs = max_runtime_secs_GBM,
+        hyper_params = list(min_rows = min_rows_GBM,
+                            max_depth = max_depth_GBM,
+                            learn_rate = learn_rate_GBM,
+                            ntrees = ntrees_GBM,
+                            learn_rate_annealing = learn_rate_annealing_GBM),
+        nfolds = nfolds_GBM, fold_assignment = "Modulo")
+GBM_Ta_brooder_all = h2o.getModel(GBM_Ta_brooder_all.grid@model_ids[[1]])
+h2o.saveModel(GBM_Ta_brooder_all, "GBM/Ta_brooder/all")
+h2o.saveMojo(GBM_Ta_brooder_all, "Best ML models/GBM_Ta_brooder_all.MOJO")
+
+# GBM Tg_brooder
+GBM_Tg_brooder = h2o.loadModel("Best ML models/GBM_Tg_brooder")
+GBM_Tg_brooder_all.grid = parallel.general.grid(seed = 158, algorithm = "gbm", 
+                                          x=X.list[[2]], y=ys[2], training_frame = all.h2o,
+                                          distribution = distribution_GBM,
+                                          keep_cross_validation_predictions = TRUE,
+                                          max_runtime_secs = max_runtime_secs_GBM,
+        hyper_params = list(min_rows = min_rows_GBM,
+                            max_depth = max_depth_GBM,
+                            learn_rate = learn_rate_GBM,
+                            ntrees = ntrees_GBM,
+                            learn_rate_annealing = learn_rate_annealing_GBM),
+        nfolds = nfolds_GBM, fold_assignment = "Modulo")
+GBM_Tg_brooder_all = h2o.getModel(GBM_Tg_brooder_all.grid@model_ids[[1]])
+h2o.saveModel(GBM_Tg_brooder_all, "GBM/Tg_brooder/all")
+h2o.saveMojo(GBM_Tg_brooder_all, "Best ML models/GBM_Tg_brooder_all.MOJO")
+
+# GBM Tr
+GBM_Tr = h2o.loadModel("Best ML models/GBM_Tr")
+GBM_Tr_all.grid = parallel.general.grid(seed = 387, algorithm = "gbm", 
+                                          x=X.list[[3]], y=ys[3], training_frame = all.h2o,
+                                          distribution = distribution_GBM,
+                                          keep_cross_validation_predictions = TRUE,
+                                          max_runtime_secs = max_runtime_secs_GBM,
+        hyper_params = list(min_rows = min_rows_GBM,
+                            max_depth = max_depth_GBM,
+                            learn_rate = learn_rate_GBM,
+                            ntrees = ntrees_GBM,
+                            learn_rate_annealing = learn_rate_annealing_GBM),
+        nfolds = nfolds_GBM, fold_assignment = "Modulo")
+GBM_Tr_all = h2o.getModel(GBM_Tr_all.grid@model_ids[[1]])
+h2o.saveModel(GBM_Tr_all, "GBM/Tr/all")
+h2o.saveMojo(GBM_Tr_all, "Best ML models/GBM_Tr_all.MOJO")
+
+# GBM Tg_brooder_Ta_pen
+GBM_Tg_brooder_Ta_pen = h2o.loadModel("Best ML models/GBM_Tg_brooder_Ta_pen")
+GBM_Tg_brooder_Ta_pen_all.grid = parallel.general.grid(seed = 877, algorithm = "gbm", 
+                                          x=X.list[[4]], y=ys[4], training_frame = all.h2o,
+                                          distribution = distribution_GBM,
+                                          keep_cross_validation_predictions = TRUE,
+                                          max_runtime_secs = max_runtime_secs_GBM,
+        hyper_params = list(min_rows = min_rows_GBM,
+                            max_depth = max_depth_GBM,
+                            learn_rate = learn_rate_GBM,
+                            ntrees = ntrees_GBM,
+                            learn_rate_annealing = learn_rate_annealing_GBM),
+        nfolds = nfolds_GBM, fold_assignment = "Modulo")
+GBM_Tg_brooder_Ta_pen_all = h2o.getModel(GBM_Tg_brooder_Ta_pen_all.grid@model_ids[[1]])
+h2o.saveModel(GBM_Tg_brooder_Ta_pen_all, "GBM/Tg_brooder_Ta_pen/all")
+h2o.saveMojo(GBM_Tg_brooder_Ta_pen_all, "Best ML models/GBM_Tg_brooder_Ta_pen_all.MOJO")
+
+# GBM Tr_Ta_pen
+GBM_Tr_Ta_pen = h2o.loadModel("Best ML models/GBM_Tr_Ta_pen")
+GBM_Tr_Ta_pen_all.grid = parallel.general.grid(seed = 807, algorithm = "gbm", 
+                                          x=X.list[[5]], y=ys[5], training_frame = all.h2o,
+                                          distribution = distribution_GBM,
+                                          keep_cross_validation_predictions = TRUE,
+                                          max_runtime_secs = max_runtime_secs_GBM,
+        hyper_params = list(min_rows = min_rows_GBM,
+                            max_depth = max_depth_GBM,
+                            learn_rate = learn_rate_GBM,
+                            ntrees = ntrees_GBM,
+                            learn_rate_annealing = learn_rate_annealing_GBM),
+        nfolds = nfolds_GBM, fold_assignment = "Modulo")
+GBM_Tr_Ta_pen_all = h2o.getModel(GBM_Tr_Ta_pen_all.grid@model_ids[[1]])
+h2o.saveModel(GBM_Tr_Ta_pen_all, "GBM/Tr_Ta_pen/all")
+h2o.saveMojo(GBM_Tr_Ta_pen_all, "Best ML models/GBM_Tr_Ta_pen_all.MOJO")
+
+# GBM Tr_Ta_brooder
+GBM_Tr_Ta_brooder = h2o.loadModel("Best ML models/GBM_Tr_Ta_brooder")
+GBM_Tr_Ta_brooder_all.grid = parallel.general.grid(seed = 498, algorithm = "gbm", 
+                                          x=X.list[[6]], y=ys[6], training_frame = all.h2o,
+                                          distribution = distribution_GBM,
+                                          keep_cross_validation_predictions = TRUE,
+                                          max_runtime_secs = max_runtime_secs_GBM,
+        hyper_params = list(min_rows = min_rows_GBM,
+                            max_depth = max_depth_GBM,
+                            learn_rate = learn_rate_GBM,
+                            ntrees = ntrees_GBM,
+                            learn_rate_annealing = learn_rate_annealing_GBM),
+        nfolds = nfolds_GBM, fold_assignment = "Modulo")
+GBM_Tr_Ta_brooder_all = h2o.getModel(GBM_Tr_Ta_brooder_all.grid@model_ids[[1]])
+h2o.saveModel(GBM_Tr_Ta_brooder_all, "GBM/Tr_Ta_brooder/all")
+h2o.saveMojo(GBM_Tr_Ta_brooder_all, "Best ML models/GBM_Tr_Ta_brooder_all.MOJO")
+
+
+
+
+# DL Ta_brooder
+DL_Ta_brooder = h2o.loadModel("Best ML models/DL_Ta_brooder")
+DL_Ta_brooder_all = parallel.deep.learning(seed = 1164, 
+                                             layers_DL = layers_DL, hidden_DL = hidden_DL,
+                                             epsilon_DL = epsilon_DL, rho_DL = rho_DL,
+                                             epochs_DL = epochs_DL,
+                                             mini_batch_size_DL = mini_batch_size_DL,
+                                             hidden_dropout_DL = hidden_dropout_DL,
+                                             max_runtime_secs_DL = max_runtime_secs_DL,
+                                             X = X.list[[1]], Y = ys[1], train = all.h2o, test = test.h2o,
+                                             distribution_DL = distribution_DL, 
+                                             fast_mode_DL = fast_mode_DL,
+                                             activation_function_DL = activation_function_DL,
+                                             reproducible_DL = reproducible_DL, 
+                                             nfolds_DL = nfolds_DL)
+h2o.saveModel(DL_Ta_brooder_all, "DL/Ta_brooder/all")
+h2o.saveMojo(DL_Ta_brooder_all, "Best ML models/DL_Ta_brooder_all.MOJO")
+
+# DL Tg_brooder
+DL_Tg_brooder = h2o.loadModel("Best ML models/DL_Tg_brooder")
+DL_Tg_brooder_all = parallel.deep.learning(seed = 1775, 
+                                             layers_DL = layers_DL, hidden_DL = hidden_DL,
+                                             epsilon_DL = epsilon_DL, rho_DL = rho_DL,
+                                             epochs_DL = epochs_DL,
+                                             mini_batch_size_DL = mini_batch_size_DL,
+                                             hidden_dropout_DL = hidden_dropout_DL,
+                                             max_runtime_secs_DL = max_runtime_secs_DL,
+                                             X = X.list[[2]], Y = ys[2], train = all.h2o, test = test.h2o,
+                                             distribution_DL = distribution_DL, 
+                                             fast_mode_DL = fast_mode_DL,
+                                             activation_function_DL = activation_function_DL,
+                                             reproducible_DL = reproducible_DL, 
+                                             nfolds_DL = nfolds_DL)
+h2o.saveModel(DL_Tg_brooder_all, "DL/Tg_brooder/all")
+h2o.saveMojo(DL_Tg_brooder_all, "Best ML models/DL_Tg_brooder_all.MOJO")
+
+# DL Tr
+DL_Tr = h2o.loadModel("Best ML models/DL_Tr")
+DL_Tr_all = parallel.deep.learning(seed = 1403, 
+                                             layers_DL = layers_DL, hidden_DL = hidden_DL,
+                                             epsilon_DL = epsilon_DL, rho_DL = rho_DL,
+                                             epochs_DL = epochs_DL,
+                                             mini_batch_size_DL = mini_batch_size_DL,
+                                             hidden_dropout_DL = hidden_dropout_DL,
+                                             max_runtime_secs_DL = max_runtime_secs_DL,
+                                             X = X.list[[3]], Y = ys[3], train = all.h2o, test = test.h2o,
+                                             distribution_DL = distribution_DL, 
+                                             fast_mode_DL = fast_mode_DL,
+                                             activation_function_DL = activation_function_DL,
+                                             reproducible_DL = reproducible_DL, 
+                                             nfolds_DL = nfolds_DL)
+h2o.saveModel(DL_Tr_all, "DL/Tr/all")
+h2o.saveMojo(DL_Tr_all, "Best ML models/DL_Tr_all.MOJO")
+
+# DL Tg_brooder_Ta_pen
+DL_Tg_brooder_Ta_pen = h2o.loadModel("Best ML models/DL_Tg_brooder_Ta_pen")
+DL_Tg_brooder_Ta_pen_all = parallel.deep.learning(seed = 318, 
+                                             layers_DL = layers_DL, hidden_DL = hidden_DL,
+                                             epsilon_DL = epsilon_DL, rho_DL = rho_DL,
+                                             epochs_DL = epochs_DL,
+                                             mini_batch_size_DL = mini_batch_size_DL,
+                                             hidden_dropout_DL = hidden_dropout_DL,
+                                             max_runtime_secs_DL = max_runtime_secs_DL,
+                                             X = X.list[[4]], Y = ys[4], train = all.h2o, test = test.h2o,
+                                             distribution_DL = distribution_DL, 
+                                             fast_mode_DL = fast_mode_DL,
+                                             activation_function_DL = activation_function_DL,
+                                             reproducible_DL = reproducible_DL, 
+                                             nfolds_DL = nfolds_DL)
+h2o.saveModel(DL_Tg_brooder_Ta_pen_all, "DL/Tg_brooder_Ta_pen/all")
+h2o.saveMojo(DL_Tg_brooder_Ta_pen_all, "Best ML models/DL_Tg_brooder_Ta_pen_all.MOJO")
+
+# DL Tr_Ta_pen
+DL_Tr_Ta_pen = h2o.loadModel("Best ML models/DL_Tr_Ta_pen")
+DL_Tr_Ta_pen_all = parallel.deep.learning(seed = 1930, 
+                                             layers_DL = layers_DL, hidden_DL = hidden_DL,
+                                             epsilon_DL = epsilon_DL, rho_DL = rho_DL,
+                                             epochs_DL = epochs_DL,
+                                             mini_batch_size_DL = mini_batch_size_DL,
+                                             hidden_dropout_DL = hidden_dropout_DL,
+                                             max_runtime_secs_DL = max_runtime_secs_DL,
+                                             X = X.list[[5]], Y = ys[5], train = all.h2o, test = test.h2o,
+                                             distribution_DL = distribution_DL, 
+                                             fast_mode_DL = fast_mode_DL,
+                                             activation_function_DL = activation_function_DL,
+                                             reproducible_DL = reproducible_DL, 
+                                             nfolds_DL = nfolds_DL)
+h2o.saveModel(DL_Tr_Ta_pen_all, "DL/Tr_Ta_pen/all")
+h2o.saveMojo(DL_Tr_Ta_pen_all, "Best ML models/DL_Tr_Ta_pen_all.MOJO")
+
+# DL Tr_Ta_pen
+DL_Tr_Ta_brooder = h2o.loadModel("Best ML models/DL_Tr_Ta_brooder")
+DL_Tr_Ta_brooder_all = parallel.deep.learning(seed = 1403, 
+                                             layers_DL = layers_DL, hidden_DL = hidden_DL,
+                                             epsilon_DL = epsilon_DL, rho_DL = rho_DL,
+                                             epochs_DL = epochs_DL,
+                                             mini_batch_size_DL = mini_batch_size_DL,
+                                             hidden_dropout_DL = hidden_dropout_DL,
+                                             max_runtime_secs_DL = max_runtime_secs_DL,
+                                             X = X.list[[6]], Y = ys[6], train = all.h2o, test = test.h2o,
+                                             distribution_DL = distribution_DL, 
+                                             fast_mode_DL = fast_mode_DL,
+                                             activation_function_DL = activation_function_DL,
+                                             reproducible_DL = reproducible_DL, 
+                                             nfolds_DL = nfolds_DL)
+h2o.saveModel(DL_Tr_Ta_brooder_all, "DL/Tr_Ta_brooder/all")
+h2o.saveMojo(DL_Tr_Ta_brooder_all, "Best ML models/DL_Tr_Ta_brooder_all.MOJO")
+```
+
+
+```{r}
+# investigating the interactions for GLM and creating LM models
+library(lme4)
+
+# will only remove effects if there is a strong suggestion for (p > 0.1). Otherwise, will keep it
+
+##### Ta_brooder
+LM.Ta_brooder_1 = lm(Ta_brooder ~ Ta_pen*Heat_source_power, data = train.dataset)
+# summary(LM.Ta_brooder_1)
+# anova(LM.Ta_brooder_1) # suggests removing interaction (p = 0.1304)
+LM.Ta_brooder_2 = lm(Ta_brooder ~ Ta_pen + Heat_source_power, data = train.dataset)
+# summary(LM.Ta_brooder_2)
+# anova(LM.Ta_brooder_2)
+# anova(LM.Ta_brooder_2, LM.Ta_brooder_1) # no difference (p = 0.1304)
+LM.Ta_brooder_final = LM.Ta_brooder_2
+
+# cross-validation
+LM.Ta_brooder_final_CV1 = update(LM.Ta_brooder_final, data = train.dataset[ -seq(1, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Ta_brooder_final = sum( (predict(LM.Ta_brooder_final_CV1, train.dataset[seq(1, nrow(train.dataset), by = 5) ,]) - train.dataset$Ta_brooder[seq(1, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset)
+
+LM.Ta_brooder_final_CV2 = update(LM.Ta_brooder_final, data = train.dataset[ -seq(2, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Ta_brooder_final = sum( (predict(LM.Ta_brooder_final_CV2, train.dataset[seq(2, nrow(train.dataset), by = 5) ,]) - train.dataset$Ta_brooder[seq(2, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Ta_brooder_final
+
+LM.Ta_brooder_final_CV3 = update(LM.Ta_brooder_final, data = train.dataset[ -seq(3, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Ta_brooder_final = sum( (predict(LM.Ta_brooder_final_CV3, train.dataset[seq(3, nrow(train.dataset), by = 5) ,]) - train.dataset$Ta_brooder[seq(3, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Ta_brooder_final
+
+LM.Ta_brooder_final_CV4 = update(LM.Ta_brooder_final, data = train.dataset[ -seq(4, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Ta_brooder_final = sum( (predict(LM.Ta_brooder_final_CV4, train.dataset[seq(4, nrow(train.dataset), by = 5) ,]) - train.dataset$Ta_brooder[seq(4, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Ta_brooder_final
+
+LM.Ta_brooder_final_CV5 = update(LM.Ta_brooder_final, data = train.dataset[ -seq(5, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Ta_brooder_final = sum( (predict(LM.Ta_brooder_final_CV5, train.dataset[seq(5, nrow(train.dataset), by = 5) ,]) - train.dataset$Ta_brooder[seq(5, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Ta_brooder_final
+
+# retraining the model with all datapoints
+LM.Ta_brooder_final_all = update(LM.Ta_brooder_final, data = all.dataset)
+
+
+
+
+
+##### Tg_brooder
+LM.Tg_brooder_1 = lm(Tg_brooder ~ Ta_brooder*Heat_source_power, data = train.dataset)
+# summary(LM.Tg_brooder_1)
+# anova(LM.Tg_brooder_1) # weak suggestion to remove interaction (p = 0.0549). Will remove it
+LM.Tg_brooder_2 = lm(Tg_brooder ~ Ta_brooder + Heat_source_power, data = train.dataset)
+# summary(LM.Tg_brooder_2)
+# anova(LM.Tg_brooder_2, LM.Tg_brooder_1) # not different (p = 0.0549)
+# anova (LM.Tg_brooder_2) # everything is significat
+LM.Tg_brooder_final = LM.Tg_brooder_2
+
+# cross-validation
+LM.Tg_brooder_final_CV1 = update(LM.Tg_brooder_final, data = train.dataset[ -seq(1, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tg_brooder_final = sum( (predict(LM.Tg_brooder_final_CV1, train.dataset[seq(1, nrow(train.dataset), by = 5) ,]) - train.dataset$Tg_brooder[seq(1, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset)
+
+LM.Tg_brooder_final_CV2 = update(LM.Tg_brooder_final, data = train.dataset[ -seq(2, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tg_brooder_final = sum( (predict(LM.Tg_brooder_final_CV2, train.dataset[seq(2, nrow(train.dataset), by = 5) ,]) - train.dataset$Tg_brooder[seq(2, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Tg_brooder_final
+
+LM.Tg_brooder_final_CV3 = update(LM.Tg_brooder_final, data = train.dataset[ -seq(3, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tg_brooder_final = sum( (predict(LM.Tg_brooder_final_CV3, train.dataset[seq(3, nrow(train.dataset), by = 5) ,]) - train.dataset$Tg_brooder[seq(3, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Tg_brooder_final
+
+LM.Tg_brooder_final_CV4 = update(LM.Tg_brooder_final, data = train.dataset[ -seq(4, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tg_brooder_final = sum( (predict(LM.Tg_brooder_final_CV4, train.dataset[seq(4, nrow(train.dataset), by = 5) ,]) - train.dataset$Tg_brooder[seq(4, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Tg_brooder_final
+
+LM.Tg_brooder_final_CV5 = update(LM.Tg_brooder_final, data = train.dataset[ -seq(5, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tg_brooder_final = sum( (predict(LM.Tg_brooder_final_CV5, train.dataset[seq(5, nrow(train.dataset), by = 5) ,]) - train.dataset$Tg_brooder[seq(5, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Tg_brooder_final
+
+# retraining the model with all datapoints
+LM.Tg_brooder_final_all = update(LM.Tg_brooder_final, data = all.dataset)
+
+
+
+
+
+##### Tr
+LM.Tr_1 = lm(Tr ~ Ta_brooder*Heat_source_power*Tg_brooder, data = train.dataset)
+# summary(LM.Tr_1)
+# anova(LM.Tr_1) # suggests to remove three-way interaction (p = 0.295)
+LM.Tr_2 = lm(Tr ~ Ta_brooder*Heat_source_power + Ta_brooder*Tg_brooder + Heat_source_power*Tg_brooder, data = train.dataset)
+# summary(LM.Tr_2)
+# anova(LM.Tr_2) # suggests to remove all 2 two-way interactions for Tg_brooder (p >= 0.5696)
+LM.Tr_3 = lm(Tr ~ Ta_brooder*Heat_source_power + Tg_brooder, data = train.dataset)
+# summary(LM.Tr_3)
+# anova(LM.Tr_3) # suggests to remove Tg_brooder altogether (p = 0.237)
+LM.Tr_4 = lm(Tr ~ Ta_brooder*Heat_source_power, data = train.dataset)
+# summary(LM.Tr_4)
+# anova(LM.Tr_4) # suggests it's ok
+LM.Tr_final = LM.Tr_4
+
+# cross-validation
+LM.Tr_final_CV1 = update(LM.Tr_final, data = train.dataset[ -seq(1, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tr_final = sum( (predict(LM.Tr_final_CV1, train.dataset[seq(1, nrow(train.dataset), by = 5) ,]) - train.dataset$Tr[seq(1, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset)
+
+LM.Tr_final_CV2 = update(LM.Tr_final, data = train.dataset[ -seq(2, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tr_final = sum( (predict(LM.Tr_final_CV2, train.dataset[seq(2, nrow(train.dataset), by = 5) ,]) - train.dataset$Tr[seq(2, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Tr_final
+
+LM.Tr_final_CV3 = update(LM.Tr_final, data = train.dataset[ -seq(3, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tr_final = sum( (predict(LM.Tr_final_CV3, train.dataset[seq(3, nrow(train.dataset), by = 5) ,]) - train.dataset$Tr[seq(3, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Tr_final
+
+LM.Tr_final_CV4 = update(LM.Tr_final, data = train.dataset[ -seq(4, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tr_final = sum( (predict(LM.Tr_final_CV4, train.dataset[seq(4, nrow(train.dataset), by = 5) ,]) - train.dataset$Tr[seq(4, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Tr_final
+
+LM.Tr_final_CV5 = update(LM.Tr_final, data = train.dataset[ -seq(5, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tr_final = sum( (predict(LM.Tr_final_CV5, train.dataset[seq(5, nrow(train.dataset), by = 5) ,]) - train.dataset$Tr[seq(5, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Tr_final
+
+# retraining the model with all datapoints
+LM.Tr_final_all = update(LM.Tr_final, data = all.dataset)
+
+
+
+##### Tg_brooder given Ta_pen
+LM.Tg_brooder_Ta_pen_1 = lm(Tg_brooder ~ Ta_pen*Heat_source_power, data = train.dataset)
+# summary(LM.Tg_brooder_Ta_pen_1)
+# anova(LM.Tg_brooder_Ta_pen_1) # suggests to remove the interaction (p = 0.2034)
+LM.Tg_brooder_Ta_pen_2 = lm(Tg_brooder ~ Ta_pen + Heat_source_power, data = train.dataset)
+# summary(LM.Tg_brooder_Ta_pen_2)
+# anova(LM.Tg_brooder_Ta_pen_2) # suggests that it's OK
+LM.Tg_brooder_Ta_pen_final = LM.Tg_brooder_Ta_pen_2
+
+# cross-validation
+LM.Tg_brooder_Ta_pen_final_CV1 = update(LM.Tg_brooder_Ta_pen_final, data = train.dataset[ -seq(1, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tg_brooder_Ta_pen_final = sum( (predict(LM.Tg_brooder_Ta_pen_final_CV1, train.dataset[seq(1, nrow(train.dataset), by = 5) ,]) - train.dataset$Tg_brooder[seq(1, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset)
+
+LM.Tg_brooder_Ta_pen_final_CV2 = update(LM.Tg_brooder_Ta_pen_final, data = train.dataset[ -seq(2, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tg_brooder_Ta_pen_final = sum( (predict(LM.Tg_brooder_Ta_pen_final_CV2, train.dataset[seq(2, nrow(train.dataset), by = 5) ,]) - train.dataset$Tg_brooder[seq(2, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Tg_brooder_Ta_pen_final
+
+LM.Tg_brooder_Ta_pen_final_CV3 = update(LM.Tg_brooder_Ta_pen_final, data = train.dataset[ -seq(3, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tg_brooder_Ta_pen_final = sum( (predict(LM.Tg_brooder_Ta_pen_final_CV3, train.dataset[seq(3, nrow(train.dataset), by = 5) ,]) - train.dataset$Tg_brooder[seq(3, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Tg_brooder_Ta_pen_final
+
+LM.Tg_brooder_Ta_pen_final_CV4 = update(LM.Tg_brooder_Ta_pen_final, data = train.dataset[ -seq(4, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tg_brooder_Ta_pen_final = sum( (predict(LM.Tg_brooder_Ta_pen_final_CV4, train.dataset[seq(4, nrow(train.dataset), by = 5) ,]) - train.dataset$Tg_brooder[seq(4, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Tg_brooder_Ta_pen_final
+
+LM.Tg_brooder_Ta_pen_final_CV5 = update(LM.Tg_brooder_Ta_pen_final, data = train.dataset[ -seq(5, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tg_brooder_Ta_pen_final = sum( (predict(LM.Tg_brooder_Ta_pen_final_CV5, train.dataset[seq(5, nrow(train.dataset), by = 5) ,]) - train.dataset$Tg_brooder[seq(5, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Tg_brooder_Ta_pen_final
+
+# retraining the model with all datapoints
+LM.Tg_brooder_Ta_pen_final_all = update(LM.Tg_brooder_Ta_pen_final, data = all.dataset)
+
+
+
+##### Tr given Ta_pen
+LM.Tr_Ta_pen_1 = lm(Tr ~ Ta_pen*Heat_source_power, data = train.dataset)
+# summary(LM.Tr_Ta_pen_1)
+# anova(LM.Tr_Ta_pen_1) # suggests to remove the interaction (p = 0.833)
+LM.Tr_Ta_pen_2 = lm(Tr ~ Ta_pen + Heat_source_power, data = train.dataset)
+# summary(LM.Tr_Ta_pen_2)
+# anova(LM.Tr_Ta_pen_2) # weak suggests to remove Ta_pen (p = 0.07511). Will not remove it
+LM.Tr_Ta_pen_final = LM.Tr_Ta_pen_2
+
+# cross-validation
+LM.Tr_Ta_pen_final_CV1 = update(LM.Tr_Ta_pen_final, data = train.dataset[ -seq(1, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tr_Ta_pen_final = sum( (predict(LM.Tr_Ta_pen_final_CV1, train.dataset[seq(1, nrow(train.dataset), by = 5) ,]) - train.dataset$Tr[seq(1, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset)
+
+LM.Tr_Ta_pen_final_CV2 = update(LM.Tr_Ta_pen_final, data = train.dataset[ -seq(2, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tr_Ta_pen_final = sum( (predict(LM.Tr_Ta_pen_final_CV2, train.dataset[seq(2, nrow(train.dataset), by = 5) ,]) - train.dataset$Tr[seq(2, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Tr_Ta_pen_final
+
+LM.Tr_Ta_pen_final_CV3 = update(LM.Tr_Ta_pen_final, data = train.dataset[ -seq(3, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tr_Ta_pen_final = sum( (predict(LM.Tr_Ta_pen_final_CV3, train.dataset[seq(3, nrow(train.dataset), by = 5) ,]) - train.dataset$Tr[seq(3, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Tr_Ta_pen_final
+
+LM.Tr_Ta_pen_final_CV4 = update(LM.Tr_Ta_pen_final, data = train.dataset[ -seq(4, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tr_Ta_pen_final = sum( (predict(LM.Tr_Ta_pen_final_CV4, train.dataset[seq(4, nrow(train.dataset), by = 5) ,]) - train.dataset$Tr[seq(4, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Tr_Ta_pen_final
+
+LM.Tr_Ta_pen_final_CV5 = update(LM.Tr_Ta_pen_final, data = train.dataset[ -seq(5, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tr_Ta_pen_final = sum( (predict(LM.Tr_Ta_pen_final_CV5, train.dataset[seq(5, nrow(train.dataset), by = 5) ,]) - train.dataset$Tr[seq(5, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Tr_Ta_pen_final
+
+# retraining the model with all datapoints
+LM.Tr_Ta_pen_final_all = update(LM.Tr_Ta_pen_final, data = all.dataset)
+
+
+
+##### Tr given Ta_brooder
+LM.Tr_Ta_brooder_1 = lm(Tr ~ Ta_brooder*Heat_source_power, data = train.dataset)
+# summary(LM.Tr_Ta_brooder_1)
+# anova(LM.Tr_Ta_brooder_1) # suggests it's ok
+LM.Tr_Ta_brooder_final = LM.Tr_Ta_brooder_1
+
+# cross-validation
+LM.Tr_Ta_brooder_final_CV1 = update(LM.Tr_Ta_brooder_final, data = train.dataset[ -seq(1, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tr_Ta_brooder_final = sum( (predict(LM.Tr_Ta_brooder_final_CV1, train.dataset[seq(1, nrow(train.dataset), by = 5) ,]) - train.dataset$Tr[seq(1, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset)
+
+LM.Tr_Ta_brooder_final_CV2 = update(LM.Tr_Ta_brooder_final, data = train.dataset[ -seq(2, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tr_Ta_brooder_final = sum( (predict(LM.Tr_Ta_brooder_final_CV2, train.dataset[seq(2, nrow(train.dataset), by = 5) ,]) - train.dataset$Tr[seq(2, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Tr_Ta_brooder_final
+
+LM.Tr_Ta_brooder_final_CV3 = update(LM.Tr_Ta_brooder_final, data = train.dataset[ -seq(3, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tr_Ta_brooder_final = sum( (predict(LM.Tr_Ta_brooder_final_CV3, train.dataset[seq(3, nrow(train.dataset), by = 5) ,]) - train.dataset$Tr[seq(3, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Tr_Ta_brooder_final
+
+LM.Tr_Ta_brooder_final_CV4 = update(LM.Tr_Ta_brooder_final, data = train.dataset[ -seq(4, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tr_Ta_brooder_final = sum( (predict(LM.Tr_Ta_brooder_final_CV4, train.dataset[seq(4, nrow(train.dataset), by = 5) ,]) - train.dataset$Tr[seq(4, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Tr_Ta_brooder_final
+
+LM.Tr_Ta_brooder_final_CV5 = update(LM.Tr_Ta_brooder_final, data = train.dataset[ -seq(5, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tr_Ta_brooder_final = sum( (predict(LM.Tr_Ta_brooder_final_CV5, train.dataset[seq(5, nrow(train.dataset), by = 5) ,]) - train.dataset$Tr[seq(5, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Tr_Ta_brooder_final
+
+# retraining the model with all datapoints
+LM.Tr_Ta_brooder_final_all = update(LM.Tr_Ta_brooder_final, data = all.dataset)
+
+
+
+##### Tr only
+LM.Tr_only_1 = lm(Tr ~ 1, data = train.dataset)
+# summary(LM.Tr_only_1)
+# anova(LM.Tr_only_1) # suggests it's ok
+LM.Tr_only_final = LM.Tr_only_1
+
+# cross-validation
+LM.Tr_only_final_CV1 = update(LM.Tr_only_final, data = train.dataset[ -seq(1, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tr_only_final = sum( (predict(LM.Tr_only_final_CV1, train.dataset[seq(1, nrow(train.dataset), by = 5) ,]) - train.dataset$Tr[seq(1, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset)
+
+LM.Tr_only_final_CV2 = update(LM.Tr_only_final, data = train.dataset[ -seq(2, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tr_only_final = sum( (predict(LM.Tr_only_final_CV2, train.dataset[seq(2, nrow(train.dataset), by = 5) ,]) - train.dataset$Tr[seq(2, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Tr_only_final
+
+LM.Tr_only_final_CV3 = update(LM.Tr_only_final, data = train.dataset[ -seq(3, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tr_only_final = sum( (predict(LM.Tr_only_final_CV3, train.dataset[seq(3, nrow(train.dataset), by = 5) ,]) - train.dataset$Tr[seq(3, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Tr_only_final
+
+LM.Tr_only_final_CV4 = update(LM.Tr_only_final, data = train.dataset[ -seq(4, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tr_only_final = sum( (predict(LM.Tr_only_final_CV4, train.dataset[seq(4, nrow(train.dataset), by = 5) ,]) - train.dataset$Tr[seq(4, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Tr_only_final
+
+LM.Tr_only_final_CV5 = update(LM.Tr_only_final, data = train.dataset[ -seq(5, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tr_only_final = sum( (predict(LM.Tr_only_final_CV5, train.dataset[seq(5, nrow(train.dataset), by = 5) ,]) - train.dataset$Tr[seq(5, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Tr_only_final
+
+# retraining the model with all datapoints
+LM.Tr_only_final_all = update(LM.Tr_only_final, data = all.dataset)
+
+
+
+
+##### Tr with random effects and heat source power
+# Piglets nested with Brooder and crossed in Hour nested with Day
+LM.Tr_RE_1 = lmer(Tr ~ Heat_source_power + (1|Brooder/Piglet) + (1|Day/Hour), data = train.dataset, REML = F)
+# summary(LM.Tr_RE_1) # The estimation of the intercept does not change, only the amount of the residual not accounted for
+# Anova(LM.Tr_RE_1) # should keep the Heat source (p = 0.006245)
+# Testing if we can remove random effects of Hour
+LM.Tr_RE_2 = lmer(Tr ~ Heat_source_power + (1|Brooder/Piglet) + (1|Day), data = train.dataset, REML = F)
+# anova(LM.Tr_RE_1, LM.Tr_RE_2) # suggests we need hour nested within day (p = 2.434e-8)
+# do we need day or just hour?
+LM.Tr_RE_3 = lmer(Tr ~ Heat_source_power + (1|Brooder/Piglet) + (1|Hour), data = train.dataset, REML = F)
+# anova(LM.Tr_RE_1, LM.Tr_RE_3) # suggests we don't need to account for the random effect of Day (p = 0.2271)
+# testing if we need to account for the random effect of the Brooder
+LM.Tr_RE_4 = lmer(Tr ~ Heat_source_power + (1|Piglet) + (1|Hour), data = train.dataset, REML = F)
+# anova(LM.Tr_RE_4, LM.Tr_RE_3) # suggests we don't need to account for the random effect of the Brooder (p = 1)
+# testing if we need to account for the random effect of the Hour
+LM.Tr_RE_5 = lmer(Tr ~ Heat_source_power + (1|Piglet), data = train.dataset, REML = F)
+# anova(LM.Tr_RE_4, LM.Tr_RE_5) # suggests we need to account for the random effect of the Hour (p = 5.162e-8)
+# testing if we need to account for the random effect of the Piglet
+LM.Tr_RE_6 = lmer(Tr ~ Heat_source_power + (1|Hour), data = train.dataset, REML = F)
+# anova(LM.Tr_RE_4, LM.Tr_RE_6) # Random effects for Piglets is border line (p = 0.05501). Will not remove it
+# Do we still need fixed effects?
+LM.Tr_RE_7 = lmer(Tr ~ (1|Piglet) + (1|Hour), data = train.dataset, REML = F)
+# anova(LM.Tr_RE_4, LM.Tr_RE_7) # suggests we need to include the fixed effect of the heat source (p = 0.02694
+LM.Tr_RE_final = update(LM.Tr_RE_4, REML = T)
+
+# cross-validation
+LM.Tr_RE_final_CV1 = update(LM.Tr_RE_final, data = train.dataset[ -seq(1, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tr_RE_final = sum( (predict(LM.Tr_RE_final_CV1, train.dataset[seq(1, nrow(train.dataset), by = 5) ,], re.form = NA) - train.dataset$Tr[seq(1, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset)
+
+LM.Tr_RE_final_CV2 = update(LM.Tr_RE_final, data = train.dataset[ -seq(2, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tr_RE_final = sum( (predict(LM.Tr_RE_final_CV2, train.dataset[seq(2, nrow(train.dataset), by = 5) ,], re.form = NA) - train.dataset$Tr[seq(2, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Tr_RE_final
+
+LM.Tr_RE_final_CV3 = update(LM.Tr_RE_final, data = train.dataset[ -seq(3, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tr_RE_final = sum( (predict(LM.Tr_RE_final_CV3, train.dataset[seq(3, nrow(train.dataset), by = 5) ,], re.form = NA) - train.dataset$Tr[seq(3, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Tr_RE_final
+
+LM.Tr_RE_final_CV4 = update(LM.Tr_RE_final, data = train.dataset[ -seq(4, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tr_RE_final = sum( (predict(LM.Tr_RE_final_CV4, train.dataset[seq(4, nrow(train.dataset), by = 5) ,], re.form = NA) - train.dataset$Tr[seq(4, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Tr_RE_final
+
+LM.Tr_RE_final_CV5 = update(LM.Tr_RE_final, data = train.dataset[ -seq(5, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tr_RE_final = sum( (predict(LM.Tr_RE_final_CV5, train.dataset[seq(5, nrow(train.dataset), by = 5) ,], re.form = NA) - train.dataset$Tr[seq(5, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Tr_RE_final
+
+# retraining the model with all datapoints
+LM.Tr_RE_final_all = update(LM.Tr_RE_final, data = all.dataset)
+
+
+
+
+##### Tr with random effects only
+# Piglets nested with Brooder and crossed in Hour nested with Day
+LM.Tr_RE_only_1 = lmer(Tr ~ (1|Brooder/Piglet) + (1|Day/Hour), data = train.dataset, REML = F)
+# summary(LM.Tr_RE_only_1)
+# Testing if we can remove random effects of Hour
+LM.Tr_RE_only_2 = lmer(Tr ~ (1|Brooder/Piglet) + (1|Day), data = train.dataset, REML = F)
+# anova(LM.Tr_RE_only_1, LM.Tr_RE_only_2) # suggests we need hour nested within day (p = 3.75e-8)
+# do we need day or just hour?
+LM.Tr_RE_only_3 = lmer(Tr ~ (1|Brooder/Piglet) + (1|Hour), data = train.dataset, REML = F)
+# anova(LM.Tr_RE_only_1, LM.Tr_RE_only_3) # suggests we don't need to account for the random effect of Day (p = 0.3139)
+# testing if we need to account for the random effect of the Brooder
+LM.Tr_RE_only_4 = lmer(Tr ~ (1|Piglet) + (1|Hour), data = train.dataset, REML = F)
+# anova(LM.Tr_RE_only_4, LM.Tr_RE_only_3) # suggests we don't need to account for the random effect of the Brooder (p = 5302)
+# testing if we need to account for the random effect of the Hour
+LM.Tr_RE_only_5 = lmer(Tr ~ (1|Piglet), data = train.dataset, REML = F)
+# anova(LM.Tr_RE_only_4, LM.Tr_RE_only_5) # suggests we need to account for the random effect of the Hour (p = 7.618e-8)
+# testing if we need to account for the random effect of the Piglet
+LM.Tr_RE_only_6 = lmer(Tr ~ (1|Hour), data = train.dataset, REML = F)
+# anova(LM.Tr_RE_only_4, LM.Tr_RE_only_6) # suggests we need to account for the random effect of the Piglet (p = 0.000431)
+LM.Tr_RE_only_final = update(LM.Tr_RE_only_4, REML = T)
+
+# cross-validation
+LM.Tr_RE_only_final_CV1 = update(LM.Tr_RE_only_final, data = train.dataset[ -seq(1, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tr_RE_only_final = sum( (predict(LM.Tr_RE_only_final_CV1, train.dataset[seq(1, nrow(train.dataset), by = 5) ,], re.form = NA) - train.dataset$Tr[seq(1, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset)
+
+LM.Tr_RE_only_final_CV2 = update(LM.Tr_RE_only_final, data = train.dataset[ -seq(2, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tr_RE_only_final = sum( (predict(LM.Tr_RE_only_final_CV2, train.dataset[seq(2, nrow(train.dataset), by = 5) ,], re.form = NA) - train.dataset$Tr[seq(2, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Tr_RE_only_final
+
+LM.Tr_RE_only_final_CV3 = update(LM.Tr_RE_only_final, data = train.dataset[ -seq(3, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tr_RE_only_final = sum( (predict(LM.Tr_RE_only_final_CV3, train.dataset[seq(3, nrow(train.dataset), by = 5) ,], re.form = NA) - train.dataset$Tr[seq(3, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Tr_RE_only_final
+
+LM.Tr_RE_only_final_CV4 = update(LM.Tr_RE_only_final, data = train.dataset[ -seq(4, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tr_RE_only_final = sum( (predict(LM.Tr_RE_only_final_CV4, train.dataset[seq(4, nrow(train.dataset), by = 5) ,], re.form = NA) - train.dataset$Tr[seq(4, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Tr_RE_only_final
+
+LM.Tr_RE_only_final_CV5 = update(LM.Tr_RE_only_final, data = train.dataset[ -seq(5, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Tr_RE_only_final = sum( (predict(LM.Tr_RE_only_final_CV5, train.dataset[seq(5, nrow(train.dataset), by = 5) ,], re.form = NA) - train.dataset$Tr[seq(5, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Tr_RE_only_final
+
+# retraining the model with all datapoints
+LM.Tr_RE_only_final_all = update(LM.Tr_RE_only_final, data = all.dataset)
+
+
+
+
+##### Ta_brooder increase per intensity of supplemental heat
+LM.Ta_brooder_inc_1 = lm(Ta_brooder_increase ~ Ta_brooder*Heat_source_power,  data = train.dataset)
+# summary(LM.Ta_brooder_inc_1)
+# anova(LM.Ta_brooder_inc_1) # suggests everything is statistically significant
+# can't use this model because Ta_brooder is a confounding factor.
+LM.Ta_brooder_inc_2 = lm(Ta_brooder_increase ~ Heat_source_power,  data = train.dataset)
+# summary(LM.Ta_brooder_inc_2) # the intercept is not statistically different from zero
+# anova(LM.Ta_brooder_inc_1, LM.Ta_brooder_inc_2) # suggests they are different but model 2 is more practical
+LM.Ta_brooder_inc_3 = lm(Ta_brooder_increase ~ -1 + Heat_source_power,  data = train.dataset)
+# summary(LM.Ta_brooder_inc_3) # the intercept is not statistically different from zero
+# anova(LM.Ta_brooder_inc_3, LM.Ta_brooder_inc_2) # they are not different
+LM.Ta_brooder_inc_final = LM.Ta_brooder_inc_3
+
+# cross-validation
+LM.Ta_brooder_inc_final_CV1 = update(LM.Ta_brooder_inc_final, data = train.dataset[ -seq(1, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Ta_brooder_inc_final = sum( (predict(LM.Ta_brooder_inc_final_CV1, train.dataset[seq(1, nrow(train.dataset), by = 5) ,], re.form = NA) - train.dataset$Ta_brooder_increase[seq(1, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset)
+
+LM.Ta_brooder_inc_final_CV2 = update(LM.Ta_brooder_inc_final, data = train.dataset[ -seq(2, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Ta_brooder_inc_final = sum( (predict(LM.Ta_brooder_inc_final_CV2, train.dataset[seq(2, nrow(train.dataset), by = 5) ,], re.form = NA) - train.dataset$Ta_brooder_increase[seq(2, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Ta_brooder_inc_final
+
+LM.Ta_brooder_inc_final_CV3 = update(LM.Ta_brooder_inc_final, data = train.dataset[ -seq(3, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Ta_brooder_inc_final = sum( (predict(LM.Ta_brooder_inc_final_CV3, train.dataset[seq(3, nrow(train.dataset), by = 5) ,], re.form = NA) - train.dataset$Ta_brooder_increase[seq(3, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Ta_brooder_inc_final
+
+LM.Ta_brooder_inc_final_CV4 = update(LM.Ta_brooder_inc_final, data = train.dataset[ -seq(4, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Ta_brooder_inc_final = sum( (predict(LM.Ta_brooder_inc_final_CV4, train.dataset[seq(4, nrow(train.dataset), by = 5) ,], re.form = NA) - train.dataset$Ta_brooder_increase[seq(4, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Ta_brooder_inc_final
+
+LM.Ta_brooder_inc_final_CV5 = update(LM.Ta_brooder_inc_final, data = train.dataset[ -seq(5, nrow(train.dataset), by = 5) ,] )
+MSE.LM.Ta_brooder_inc_final = sum( (predict(LM.Ta_brooder_inc_final_CV5, train.dataset[seq(5, nrow(train.dataset), by = 5) ,], re.form = NA) - train.dataset$Ta_brooder_increase[seq(5, nrow(train.dataset), by = 5)])^2 )/nrow(train.dataset) + MSE.LM.Ta_brooder_inc_final
+
+# retraining the model with all datapoints
+LM.Ta_brooder_inc_final_all = update(LM.Ta_brooder_inc_final, data = all.dataset)
+
+
+
+
+
+
+#### Saving the models
+MSE.LM = data.frame(Ta_brooder_CV = MSE.LM.Ta_brooder_final,
+                    Ta_brooder_training = sum( (predict(LM.Ta_brooder_final) - train.dataset$Ta_brooder)^2 )/nrow(train.dataset),
+                    Ta_brooder_testing = sum( (predict(LM.Ta_brooder_final, test.dataset) - test.dataset$Ta_brooder)^2 )/nrow(test.dataset),
+                    Ta_brooder_mean = sum( (predict(LM.Ta_brooder_final, mean_piglets) - mean_piglets$Ta_brooder)^2 )/nrow(mean_piglets),
+                    
+                    Tg_brooder_CV = MSE.LM.Tg_brooder_final,
+                    Tg_brooder_training = sum( (predict(LM.Tg_brooder_final) - train.dataset$Tg_brooder)^2 )/nrow(train.dataset),
+                    Tg_brooder_testing = sum( (predict(LM.Tg_brooder_final, test.dataset) - test.dataset$Tg_brooder)^2 )/nrow(test.dataset),
+                    Tg_brooder_mean = sum( (predict(LM.Tg_brooder_final, mean_piglets) - mean_piglets$Tg_brooder)^2 )/nrow(mean_piglets),
+                    
+                    Tr_CV = MSE.LM.Tr_final,
+                    Tr_training = sum( (predict(LM.Tr_final) - train.dataset$Tr)^2 )/nrow(train.dataset),
+                    Tr_testing = sum( (predict(LM.Tr_final, test.dataset) - test.dataset$Tr)^2 )/nrow(test.dataset),
+                    Tr_mean = sum( (predict(LM.Tr_final, mean_piglets) - mean_piglets$Tr)^2 )/nrow(mean_piglets),
+                    
+                    Tg_brooder_Ta_pen_CV = MSE.LM.Tg_brooder_Ta_pen_final,
+                    Tg_brooder_Ta_pen_training = sum( (predict(LM.Tg_brooder_Ta_pen_final) - train.dataset$Tg_brooder)^2 )/nrow(train.dataset),
+                    Tg_brooder_Ta_pen_testing = sum( (predict(LM.Tg_brooder_Ta_pen_final, test.dataset) - test.dataset$Tg_brooder)^2 )/nrow(test.dataset),
+                    Tg_brooder_Ta_pen_mean = sum( (predict(LM.Tg_brooder_Ta_pen_final, mean_piglets) - mean_piglets$Tg_brooder)^2 )/nrow(mean_piglets),
+                    
+                    Tr_Ta_pen_CV = MSE.LM.Tr_Ta_pen_final,
+                    Tr_Ta_pen_training = sum( (predict(LM.Tr_Ta_pen_final) - train.dataset$Tr)^2 )/nrow(train.dataset),
+                    Tr_Ta_pen_testing = sum( (predict(LM.Tr_Ta_pen_final, test.dataset) - test.dataset$Tr)^2 )/nrow(test.dataset),
+                    Tr_Ta_pen_mean = sum( (predict(LM.Tr_Ta_pen_final, mean_piglets) - mean_piglets$Tr)^2 )/nrow(mean_piglets),
+                    
+                    Tr_Ta_brooder_CV = MSE.LM.Tr_Ta_brooder_final,
+                    Tr_Ta_brooder_training = sum( (predict(LM.Tr_Ta_brooder_final) - train.dataset$Tr)^2 )/nrow(train.dataset),
+                    Tr_Ta_brooder_testing = sum( (predict(LM.Tr_Ta_brooder_final, test.dataset) - test.dataset$Tr)^2 )/nrow(test.dataset),
+                    Tr_Ta_brooder_mean = sum( (predict(LM.Tr_Ta_brooder_final, mean_piglets) - mean_piglets$Tr)^2 )/nrow(mean_piglets),
+                    
+                    Tr_only_CV = MSE.LM.Tr_only_final,
+                    Tr_only_training = sum( (predict(LM.Tr_only_final) - train.dataset$Tr)^2 )/nrow(train.dataset),
+                    Tr_only_testing = sum( (predict(LM.Tr_only_final, test.dataset) - test.dataset$Tr)^2 )/nrow(test.dataset),
+                    Tr_only_mean = sum( (predict(LM.Tr_only_final, mean_piglets) - mean_piglets$Tr)^2 )/nrow(mean_piglets),
+                    
+                    Tr_RE_CV = MSE.LM.Tr_RE_final,
+                    Tr_RE_training = sum( (predict(LM.Tr_RE_final, re.form = NA) - train.dataset$Tr)^2 )/nrow(train.dataset),
+                    Tr_RE_testing = sum( (predict(LM.Tr_RE_final, test.dataset, re.form = NA) - test.dataset$Tr)^2 )/nrow(test.dataset),
+                    Tr_RE_mean = sum( (predict(LM.Tr_RE_final, mean_piglets, re.form = NA) - mean_piglets$Tr)^2 )/nrow(mean_piglets),
+                    
+                    Tr_RE_only_CV = MSE.LM.Tr_RE_only_final,
+                    Tr_RE_only_training = sum( (predict(LM.Tr_RE_only_final, re.form = NA) - train.dataset$Tr)^2 )/nrow(train.dataset),
+                    Tr_RE_only_testing = sum( (predict(LM.Tr_RE_only_final, test.dataset, re.form = NA) - test.dataset$Tr)^2 )/nrow(test.dataset),
+                    Tr_RE_only_mean = sum( (predict(LM.Tr_RE_only_final, mean_piglets, re.form = NA) - mean_piglets$Tr)^2 )/nrow(mean_piglets),
+                    
+                    Ta_brooder_inc_CV = MSE.LM.Ta_brooder_inc_final,
+                    Ta_brooder_inc_CV_training = sum( (predict(LM.Ta_brooder_inc_final, re.form = NA) - train.dataset$Ta_brooder_increase)^2 )/nrow(train.dataset),
+                    Ta_brooder_inc_CV_testing = sum( (predict(LM.Ta_brooder_inc_final, test.dataset, re.form = NA) - test.dataset$Ta_brooder_increase)^2 )/nrow(test.dataset),
+                    Ta_brooder_inc_CV_mean = sum( (predict(LM.Ta_brooder_inc_final, mean_piglets, re.form = NA) - mean_piglets$Ta_brooder_increase)^2 )/nrow(mean_piglets)
+                    )
+
+save(LM.Ta_brooder_final, LM.Ta_brooder_final_all, 
+     LM.Tg_brooder_final, LM.Tg_brooder_final_all, 
+     LM.Tr_final, LM.Tr_final_all, 
+     LM.Tg_brooder_Ta_pen_final, LM.Tg_brooder_Ta_pen_final_all,
+     LM.Tr_Ta_pen_final, LM.Tr_Ta_pen_final_all, 
+     LM.Tr_Ta_brooder_final, LM.Tr_Ta_brooder_final_all, 
+     LM.Tr_only_final, LM.Tr_only_final_all,
+     LM.Tr_RE_final, LM.Tr_RE_final_all,
+     LM.Tr_RE_only_final, LM.Tr_RE_only_final_all,
+     LM.Ta_brooder_inc_final, LM.Ta_brooder_inc_final_all,
+     MSE.LM, file = "LM/LM_models_new.RData")
+
+```
+
+
+```{r}
+# extracting vector for multiplying input and obtaining prediction and matrix for multiplying input and obtaining standard error
+# prediction = coeff*vector_of_new_inputs
+# prediction_standard_error = sigma*sqrt( 1 + t(vector_of_new_inputs) %*% invXX %*% vector_of_new_inputs )
+avg.heat =  mean(all.dataset$Heat_source_power)
+avg.Ta_pen = mean(all.dataset$Ta_pen)
+avg.Ta_brooder = mean(all.dataset$Ta_brooder)
+avg.Tg_brooder = mean(all.dataset$Tg_brooder)
+
+# Ta_brooder given Ta_pen and heat
+# LM.Ta_brooder_final_all: b0 + b1*Ta_pen + b2*Heat
+X = matrix( c( rep(1,173), all.dataset$Ta_pen, all.dataset$Heat_source_power), nrow = 173, ncol = 3, byrow = F)
+invXX = solve(t(X)%*%X)
+LM_Ta_brooder = list(invXX = invXX, 
+                     coeff = t(LM.Ta_brooder_final_all$coefficients), 
+                     sigma = sqrt( sum( (LM.Ta_brooder_final_all$residuals)^2 )/LM.Ta_brooder_final_all$df.residual ) )
+
+write.mat(LM_Ta_brooder, "Best ML models/LM_matrix/Ta_brooder.mat")
+
+# Ta_brooder increased due to heat
+# LM.Ta_brooder_inc_final_all: b0*Heat
+X = matrix( c( all.dataset$Heat_source_power), nrow = 173, ncol = 1, byrow = F)
+invXX = solve(t(X)%*%X)
+LM_Ta_brooder_inc = list(invXX = invXX, 
+                     coeff = t(LM.Ta_brooder_inc_final_all$coefficients), 
+                     sigma = sqrt( sum( (LM.Ta_brooder_inc_final_all$residuals)^2 )/LM.Ta_brooder_inc_final_all$df.residual ) )
+
+write.mat(LM_Ta_brooder_inc, "Best ML models/LM_matrix/Ta_brooder_inc.mat")
+
+# Tg_brooder given Ta_brooder and heat
+# LM.Tg_brooder_final_all: b0 + b1*Ta_brooder + b2*Heat
+X = matrix( c( rep(1,173), all.dataset$Ta_brooder, all.dataset$Heat_source_power), nrow = 173, ncol = 3, byrow = F)
+invXX = solve(t(X)%*%X)
+LM_Tg_brooder = list(invXX = invXX, 
+                     coeff = t(LM.Tg_brooder_final_all$coefficients), 
+                     sigma = sqrt( sum( (LM.Tg_brooder_final_all$residuals)^2 )/LM.Tg_brooder_final_all$df.residual ) )
+
+write.mat(LM_Tg_brooder, "Best ML models/LM_matrix/Tg_brooder.mat")
+
+# Tr adjusted by random effects
+# LM.Tr_RE_only_final_all: b0
+random_effects = VarCorr(LM.Tr_RE_only_final_all)
+sigma = sigma(LM.Tr_RE_only_final_all)^2 + attr(random_effects$Piglet, "stddev")^2 + attr(random_effects$Hour, "stddev")^2 
+LM_Tg_brooder = list(invXX = 1, 
+                     coeff = LM.Tr_RE_only_final_all@beta, 
+                     sigma = sigma)
+write.mat(LM_Tg_brooder, "Best ML models/LM_matrix/Tr.mat")
+
+# Tg_brooder given Ta_pen and heat
+# LM.Tg_brooder_Ta_pen_final_all: b0 + b1*Ta_pen + b2*Heat
+X = matrix( c( rep(1,173), all.dataset$Ta_pen, all.dataset$Heat_source_power), nrow = 173, ncol = 3, byrow = F)
+invXX = solve(t(X)%*%X)
+LM_Tg_brooder = list(invXX = invXX, 
+                     coeff = t(LM.Tg_brooder_Ta_pen_final_all$coefficients), 
+                     sigma = sqrt( sum( (LM.Tg_brooder_Ta_pen_final_all$residuals)^2 )/LM.Tg_brooder_Ta_pen_final_all$df.residual ) )
+
+write.mat(LM_Tg_brooder, "Best ML models/LM_matrix/Tg_brooder_Ta_pen.mat")
+```
+
+

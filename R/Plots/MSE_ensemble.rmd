@@ -1,0 +1,244 @@
+---
+title: "data_analysis"
+author: "Hugo Milan"
+date: "February 16, 2018"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# ANABHT - ANAlytical solver for steady-state BioHeat Transfer problems in 1D
+# 
+# Copyright (C) 2018 by Cornell University. All Rights Reserved.
+# 
+# Written by Hugo Fernando Maia Milan.
+# 
+# Free for educational, research and non-profit purposes.
+# Refer to the license file for details.
+#
+# 
+# File:   MSE_ensemble.rmd
+# Author: Hugo Fernando Maia Milan
+# Email:  hugofernando@gmail.com
+#
+# Created on May 22, 2018.
+#
+#
+# Function description:
+# Plots the MSE ensemble data
+#
+
+# loading data
+mse_ensemble = read.csv("../../datasets/mse_ensemble.csv")
+
+color.training = "tomato4"
+color.CV = "springgreen4"
+color.testing = "royalblue3"
+color.variance = "goldenrod2"
+
+# export as 433 x 478
+# sets 0, 1, and best
+positions.ploting = c(1:3)
+color.barplot = c(color.training, color.testing)
+barData = barplot(t(matrix(c(mse_ensemble$MSE_total_training[positions.ploting], mse_ensemble$MSE_total_testing[positions.ploting]), nrow = 3, byrow = F)), beside = T, ylab = expression(paste("Mean squared error ("^{o},"C" ^{2}, ")", sep = "")), cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), names.arg = c("EM", "EP", "MC"), col = color.barplot, ylim = c(0, 7.5))
+
+legend("topright", c("Training", "Testing"), pch = 15, cex = 1.4, col = c(color.training, color.testing), horiz = F, x.intersp = 0.5)
+
+# sets 0, 1, best, and best ensemble
+positions.ploting = c(1:3, 12)
+color.barplot = c(color.training, color.CV, color.testing,
+                  color.training, color.CV, color.testing,
+                  color.training, color.CV, color.testing,
+                  color.training, color.CV, color.testing)
+barData = barplot(t(matrix(c(mse_ensemble$MSE_total_training[positions.ploting], mse_ensemble$MSE_total_CV[positions.ploting], mse_ensemble$MSE_total_testing[positions.ploting]), nrow = 4, byrow = F)), beside = T, ylab = expression(paste("Mean squared error ("^{o},"C" ^{2}, ")", sep = "")), cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), names.arg = c("0", "1", "MC", "E"), col = color.barplot, ylim = c(0, 7.5))
+
+legend("topright", c("Training", "CV", "Testing"), pch = 15, cex = 1.4, col = c(color.training, color.CV, color.testing), horiz = F)
+
+# models from each ensemble algorithm (6) with minimum standard deviation, sorted by minimum log-likelihood first. Show MSE and std2
+# Sorting:
+# 1:  4: NB: 2662.12  n_sets:  4
+# 2: 22: RO: 134.43   n_sets:  2
+# 3: 17: NO: 118.98   n_sets:  3
+# 4:  9: RB: 54.51    n_sets: 45
+# 5: 12: GB: 35.04    n_sets:  3
+# 6: 27: GO: -3.33    n_sets:  3
+
+# export 544 x 478
+positions.ploting = c(4, 22, 17, 9, 12, 27)
+color.barplot = c(color.training, color.CV, color.testing, color.variance)
+par(mar = c(5, 3.5, 4, 0))
+barData = barplot(t(matrix(c(mse_ensemble$MSE_total_training[positions.ploting], mse_ensemble$MSE_total_CV[positions.ploting], mse_ensemble$MSE_total_testing[positions.ploting], mse_ensemble$avg_std2_total_testing[positions.ploting]), nrow = 6, byrow = F)), beside = T, ylab = expression(paste("MSE / Variance ("^{o},"C" ^{2}, ")", sep = "")), cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(1.6,0.7,0), names.arg = c("NB", "RO", "NO", "RB", "GB", "GO"), col = color.barplot, ylim = c(0, 4.8))
+
+
+# writing the number of sets
+par(xpd = NA)
+text(x = 3, y = 5.4, "Number of sets in the ensemble", cex = 1.6, pos = 4)
+startx = 2.5
+xInterval = 5
+text(x = startx, y = 5, "4", cex = 1.6)
+text(x = startx+xInterval, y = 5, "2", cex = 1.6)
+text(x = startx+xInterval*2, y = 5, "3", cex = 1.6)
+text(x = startx+xInterval*3, y = 5, "45", cex = 1.6)
+text(x = startx+xInterval*4, y = 5, "3", cex = 1.6)
+text(x = startx+xInterval*5, y = 5, "3", cex = 1.6)
+par(xpd = FALSE)
+
+legend("topleft", c("Training MSE", "CV MSE", "Testing MSE", expression(paste("Testing ", bar(sigma)^{2}) ) ), pch = 15, cex = 1.4, col = c(color.training, color.CV, color.testing, color.variance), horiz = F)
+
+par(mar = c(5.1, 4.1, 4.1, 2.1))
+       
+```
+
+
+```{r}
+# getting the mean dataset and the predicted mean dataset
+library(rmatio) #read.mat
+mean.dataset = read.csv("../../datasets/mean_values.csv")
+stderr.dataset = read.csv("../../datasets/stderr_piglets.csv")
+mean_dataset_predicted = read.mat("../../ensembleData/KM/bestEnsembleMeanDataset.mat")
+
+
+
+# Ploting mean values +- Stderr
+hours.plot = c(1, 2, 3, 4,   6, 7, 8, 9,   11, 12, 13, 14,   16, 17, 18, 19,   21, 22, 23, 24) - 0.25
+measured.color = "springgreen4"
+estimated.color = "royalblue3"
+
+measured.symbol = 16
+estimated.symbol = 15
+symbol.size = 1.3
+
+################## Ploting for Th
+par(mar = c(5, 4, 4.5, 2) + 0.1)
+plot(hours.plot, mean.dataset$Th, xlim = c(1,24), ylim=c(30, 36), xaxt = "n", col = measured.color, pch = measured.symbol, ylab = expression(paste("Temperature ("^{o},"C)", sep = "")), xlab = "Time (hour)", mgp=c(2.3,0.7,0), cex=symbol.size, cex.axis = 1.4, cex.lab = 1.6)
+# including ticks
+# axis(2, at = c(18:30), labels = FALSE)
+# power_source = 0
+axis(1, at = c(4, 5, 6, 7) - 3, labels = c(4, 5, 6, 7), cex.axis = 1.4)
+axis(1, at = c(5, 7) - 3, labels = c(5, 7), cex.axis = 1.4, tick = FALSE)
+# power_source = 60
+axis(1, at = 5+c(4, 5, 6, 7) - 3, labels = c(4, 5, 6, 7), cex.axis = 1.4)
+axis(1, at = 5+c(5, 7) - 3, labels = c(5, 7), cex.axis = 1.4, tick = FALSE)
+# power_source = 100
+axis(1, at = 10+c(4, 5, 6, 7) - 3, labels = c(4, 5, 6, 7), cex.axis = 1.4)
+axis(1, at = 10+c(5, 7) - 3, labels = c(5, 7), cex.axis = 1.4, tick = FALSE)
+# power_source = 160
+axis(1, at = 15+c(4, 5, 6, 7) - 3, labels = c(4, 5, 6, 7), cex.axis = 1.4)
+axis(1, at = 15+c(5, 7) - 3, labels = c(5, 7), cex.axis = 1.4, tick = FALSE)
+# power_source = 200
+axis(1, at = 20+c(4, 5, 6, 7) - 3, labels = c(4, 5, 6, 7), cex.axis = 1.4)
+axis(1, at = 20+c(5, 7) - 3, labels = c(5, 7), cex.axis = 1.4, tick = FALSE)
+
+# grid lines
+abline(h = 30, untf = FALSE, lty = 3, col = "gray")
+abline(h = 31, untf = FALSE, lty = 3, col = "gray")
+abline(h = 32, untf = FALSE, lty = 3, col = "gray")
+abline(h = 33, untf = FALSE, lty = 3, col = "gray")
+abline(h = 34, untf = FALSE, lty = 3, col = "gray")
+abline(h = 35, untf = FALSE, lty = 3, col = "gray")
+abline(h = 36, untf = FALSE, lty = 3, col = "gray")
+
+points(hours.plot, mean.dataset$Th, col = measured.color, pch = measured.symbol, cex=symbol.size)
+arrows(hours.plot, mean.dataset$Th - stderr.dataset$Th, hours.plot, mean.dataset$Th + stderr.dataset$Th, lwd = 1.5, angle = 90, code = 3, length = 0.05, col = measured.color)
+
+points(hours.plot + 0.25, mean_dataset_predicted$predictionsEnsemble[,3], col = estimated.color, pch = estimated.symbol, cex=symbol.size)
+arrows(hours.plot + 0.25, mean_dataset_predicted$predictionsEnsemble[,3] - mean_dataset_predicted$predictionsEnsemble[,13], hours.plot + 0.25, mean_dataset_predicted$predictionsEnsemble[,3] + mean_dataset_predicted$predictionsEnsemble[,13], lwd = 1.5, angle = 90, code = 3, length = 0.05, col = estimated.color)
+
+# separation lines
+abline(v=5, untf = FALSE, lty = 3)
+abline(v=10, untf = FALSE, lty = 3)
+abline(v=15, untf = FALSE, lty = 3)
+abline(v=20, untf = FALSE, lty = 3)
+
+# writing power
+par(xpd = TRUE)
+text(x = 2.5, y = 36.5, "0 W", cex = 1.6)
+text(x = 2.5+5, y = 36.5, "60 W", cex = 1.6)
+text(x = 2.5+10, y = 36.5, "100 W", cex = 1.6)
+text(x = 2.5+15, y = 36.5, "160 W", cex = 1.6)
+text(x = 2.5+20, y = 36.5, "200 W", cex = 1.6)
+
+# Legend
+legend(3, 38.03, c("measured", "predicted"), col = c(measured.color, estimated.color), lty = c(1, 1, 1), lwd = 2,  pch = c(measured.symbol, estimated.symbol), pt.cex = symbol.size, cex = 1.6, horiz = T)
+par(xpd = FALSE, mar = c(5, 4, 4, 2) + 0.1)
+```
+
+```{r}
+# getting the mean dataset and the predicted mean dataset
+library(rmatio) #read.mat
+mean.dataset = read.csv("../../datasets/mean_values.csv")
+stderr.dataset = read.csv("../../datasets/stderr_piglets.csv")
+mean_dataset_predicted = read.mat("../../ensembleData/KM/bestEnsembleMeanDataset.mat")
+
+
+
+# Ploting mean values +- Stderr
+hours.plot = c(1, 2, 3, 4,   6, 7, 8, 9,   11, 12, 13, 14,   16, 17, 18, 19,   21, 22, 23, 24) - 0.25
+measured.color = "springgreen4"
+estimated.color = "royalblue3"
+
+measured.symbol = 16
+estimated.symbol = 15
+symbol.size = 1.3
+
+################## Ploting for Ts
+par(mar = c(5, 4, 4.5, 2) + 0.1)
+plot(hours.plot, mean.dataset$Ts, xlim = c(1,24), ylim=c(30, 36), xaxt = "n", col = measured.color, pch = measured.symbol, ylab = expression(paste("Temperature ("^{o},"C)", sep = "")), xlab = "Time (hour)", mgp=c(2.3,0.7,0), cex=symbol.size, cex.axis = 1.4, cex.lab = 1.6)
+# including ticks
+# axis(2, at = c(18:30), labels = FALSE)
+# power_source = 0
+axis(1, at = c(4, 5, 6, 7) - 3, labels = c(4, 5, 6, 7), cex.axis = 1.4)
+axis(1, at = c(5, 7) - 3, labels = c(5, 7), cex.axis = 1.4, tick = FALSE)
+# power_source = 60
+axis(1, at = 5+c(4, 5, 6, 7) - 3, labels = c(4, 5, 6, 7), cex.axis = 1.4)
+axis(1, at = 5+c(5, 7) - 3, labels = c(5, 7), cex.axis = 1.4, tick = FALSE)
+# power_source = 100
+axis(1, at = 10+c(4, 5, 6, 7) - 3, labels = c(4, 5, 6, 7), cex.axis = 1.4)
+axis(1, at = 10+c(5, 7) - 3, labels = c(5, 7), cex.axis = 1.4, tick = FALSE)
+# power_source = 160
+axis(1, at = 15+c(4, 5, 6, 7) - 3, labels = c(4, 5, 6, 7), cex.axis = 1.4)
+axis(1, at = 15+c(5, 7) - 3, labels = c(5, 7), cex.axis = 1.4, tick = FALSE)
+# power_source = 200
+axis(1, at = 20+c(4, 5, 6, 7) - 3, labels = c(4, 5, 6, 7), cex.axis = 1.4)
+axis(1, at = 20+c(5, 7) - 3, labels = c(5, 7), cex.axis = 1.4, tick = FALSE)
+
+# grid lines
+abline(h = 30, untf = FALSE, lty = 3, col = "gray")
+abline(h = 31, untf = FALSE, lty = 3, col = "gray")
+abline(h = 32, untf = FALSE, lty = 3, col = "gray")
+abline(h = 33, untf = FALSE, lty = 3, col = "gray")
+abline(h = 34, untf = FALSE, lty = 3, col = "gray")
+abline(h = 35, untf = FALSE, lty = 3, col = "gray")
+abline(h = 36, untf = FALSE, lty = 3, col = "gray")
+
+points(hours.plot, mean.dataset$Ts, col = measured.color, pch = measured.symbol, cex=symbol.size)
+arrows(hours.plot, mean.dataset$Ts - stderr.dataset$Ts, hours.plot, mean.dataset$Ts + stderr.dataset$Ts, lwd = 1.5, angle = 90, code = 3, length = 0.05, col = measured.color)
+
+points(hours.plot + 0.25, mean_dataset_predicted$predictionsEnsemble[,1], col = estimated.color, pch = estimated.symbol, cex=symbol.size)
+arrows(hours.plot + 0.25, mean_dataset_predicted$predictionsEnsemble[,1] - mean_dataset_predicted$predictionsEnsemble[,11], hours.plot + 0.25, mean_dataset_predicted$predictionsEnsemble[,1] + mean_dataset_predicted$predictionsEnsemble[,11], lwd = 1.5, angle = 90, code = 3, length = 0.05, col = estimated.color)
+
+# separation lines
+abline(v=5, untf = FALSE, lty = 3)
+abline(v=10, untf = FALSE, lty = 3)
+abline(v=15, untf = FALSE, lty = 3)
+abline(v=20, untf = FALSE, lty = 3)
+
+# writing power
+par(xpd = TRUE)
+text(x = 2.5, y = 36.5, "0 W", cex = 1.6)
+text(x = 2.5+5, y = 36.5, "60 W", cex = 1.6)
+text(x = 2.5+10, y = 36.5, "100 W", cex = 1.6)
+text(x = 2.5+15, y = 36.5, "160 W", cex = 1.6)
+text(x = 2.5+20, y = 36.5, "200 W", cex = 1.6)
+
+# Legend
+legend(3, 38.03, c("measured", "predicted"), col = c(measured.color, estimated.color), lty = c(1, 1, 1), lwd = 2,  pch = c(measured.symbol, estimated.symbol), pt.cex = symbol.size, cex = 1.6, horiz = T)
+par(xpd = FALSE, mar = c(5, 4, 4, 2) + 0.1)
+```
+
+

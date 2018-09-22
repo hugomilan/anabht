@@ -1,0 +1,1323 @@
+---
+title: "estimated Values"
+author: "Hugo Milan"
+date: "June 23, 2018"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# ANABHT - ANAlytical solver for steady-state BioHeat Transfer problems in 1D
+# 
+# Copyright (C) 2018 by Cornell University. All Rights Reserved.
+# 
+# Written by Hugo Fernando Maia Milan.
+# 
+# Free for educational, research and non-profit purposes.
+# Refer to the license file for details.
+#
+# 
+# File:   estimatedValues.rmd
+# Author: Hugo Fernando Maia Milan
+# Email:  hugofernando@gmail.com
+#
+# Created on June 26, 2018.
+#
+#
+# Function description:
+# Plots the estimated data
+#
+
+setwd("/home/public/OneDrive/Cornell/Publications/2018/Piglets 2013/code/V05/R/Plots")
+library("plot3D")
+library(rmatio) #read.mat
+```
+
+```{r}
+# Testing different THP and LHP equations
+Ta = seq(0, 50, 0.1)
+weight = seq(1, 20, 0.1)
+A = 0.087*weight^(2/3);
+THP = matrix(nrow = length(Ta), ncol = length(weight))
+THP2 = matrix(nrow = length(Ta), ncol = length(weight))
+THP3 = matrix(nrow = length(Ta), ncol = length(weight))
+THP3a = matrix(nrow = length(Ta), ncol = length(weight))
+THP3b = matrix(nrow = length(Ta), ncol = length(weight))
+THP4 = matrix(nrow = length(Ta), ncol = length(weight))
+THP5 = matrix(nrow = length(Ta), ncol = length(weight))
+THP6 = matrix(nrow = length(Ta), ncol = length(weight))
+THP7 = matrix(nrow = length(Ta), ncol = length(weight))
+
+LHP = matrix(nrow = length(Ta), ncol = length(weight))
+LHP2 = matrix(nrow = length(Ta), ncol = length(weight))
+LHP3 = matrix(nrow = length(Ta), ncol = length(weight))
+LHP3a = matrix(nrow = length(Ta), ncol = length(weight))
+LHP3b = matrix(nrow = length(Ta), ncol = length(weight))
+LHP4 = matrix(nrow = length(Ta), ncol = length(weight))
+LHP5 = matrix(nrow = length(Ta), ncol = length(weight))
+
+# regression on qs = a0 + a1*Ta + a2*H
+qs = 324.572 - 8.648*Ta
+# Eq. 4 (Brown-Brandl et al., 2004)
+Ta_ideal = 0.0015*weight^2 - 0.2969*weight + 30.537
+Ta_ideal_a = 0.0015*weight^2 - 0.2969*weight + 30.537 - 2
+Ta_ideal_b = 0.0015*weight^2 - 0.2969*weight + 30.537 + 2
+for (i1 in 1:length(Ta)){
+  for (i2 in 1:length(weight)){
+    # Eq. 7a (Brown-Brandl, 2014)
+    THP [i1, i2] = 10^(0.715 - 0.0025*Ta[i1] + 0.0211*log10(weight[i2]))*weight[i2]/A[i2]
+    # Eq. 8 (Brown-Brandl et al., 2004). Very low R^2
+    THP2[i1, i2] = 4.3*weight[i2]^0.15*weight[i2]/A[i2]
+    # Eq. 7a at Ta_ideal (Brown-Brandl, 2014)
+    THP3[i1, i2] = 10^(0.715 - 0.0025*Ta_ideal[i2] + 0.0211*log10(weight[i2]))*weight[i2]/A[i2]
+    # Eq. 7a at Ta_ideal (Brown-Brandl, 2014)
+    THP3a[i1, i2] = 10^(0.715 - 0.0025*Ta_ideal_a[i2] + 0.0211*log10(weight[i2]))*weight[i2]/A[i2]
+    # Eq. 7a at Ta_ideal (Brown-Brandl, 2014)
+    THP3b[i1, i2] = 10^(0.715 - 0.0025*Ta_ideal_b[i2] + 0.0211*log10(weight[i2]))*weight[i2]/A[i2]
+    # average values for days 0-14 in Table 6a (Brown-Brandl, 2014)
+    THP4[i1, i2] = (2.55 + 3.8)/2*weight[i2]/A[i2]
+    # average values for B/EG in Table 3 (Stinn and Xin, 2014)
+    THP5[i1, i2] = (1.89 + 1.82)/2*weight[i2]/A[i2]
+    # Eq. 11 (Brown-Brandl et al., 2004)
+    THP6[i1, i2] = 14.11*weight[i2]^(-0.38)*weight[i2]/A[i2]
+    # Eq. 8.77 (NRC, 2012). This can't be correctly because it predicts negative values
+    THP7[i1, i2] = ( -783.5 + 315.9*weight[i2] - 5.7685*weight[i2]^2 )/A[i2]*4184/(60*60*24) #kcal/day converting to W/m2
+    
+    # Eq. 11a (Brown-Brandl, 2014)
+    LHP [i1, i2] = (-2.26 + 0.194*Ta[i1] + 0.0679*weight[i2] - 0.0034*Ta[i1]*weight[i2])*weight[i2]/A[i2]
+    # Table 8a (Brown-Brandl, 2014)
+    LHP2[i1, i2] = 2.4329*weight[i2]/A[i2]
+    # Eq. 11a at Ta_ideal (Brown-Brandl, 2014)
+    LHP3[i1, i2] = (-2.26 + 0.194*Ta_ideal[i2] + 0.0679*weight[i2] - 0.0034*Ta_ideal[i2]*weight[i2])*weight[i2]/A[i2]
+    # Eq. 11a at Ta_ideal (Brown-Brandl, 2014)
+    LHP3a[i1, i2] = (-2.26 + 0.194*Ta_ideal_a[i2] + 0.0679*weight[i2] - 0.0034*Ta_ideal_a[i2]*weight[i2])*weight[i2]/A[i2]
+    # Eq. 11a at Ta_ideal (Brown-Brandl, 2014)
+    LHP3b[i1, i2] = (-2.26 + 0.194*Ta_ideal_b[i2] + 0.0679*weight[i2] - 0.0034*Ta_ideal_b[i2]*weight[i2])*weight[i2]/A[i2]
+    # average values for days 0-14 in Table 6a (Brown-Brandl, 2014)
+    LHP4[i1, i2] = (2.09 + 1.81)/2*weight[i2]/A[i2]
+    # average values for B/EG in Table 3 (Stinn and Xin, 2014)
+    LHP5[i1, i2] = (0.74 + 1.08)/2*weight[i2]/A[i2]
+  }
+}
+
+
+image2D(THP, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = Ta, y = weight, 
+        xlab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        ylab = "Weight (kg)",
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+
+image2D(THP2, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = Ta, y = weight, 
+        xlab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        ylab = "Weight (kg)",
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+
+image2D(THP3, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = Ta, y = weight, 
+        xlab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        ylab = "Weight (kg)",
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+
+image2D(THP4, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = Ta, y = weight, 
+        xlab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        ylab = "Weight (kg)",
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+
+image2D(THP5, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = Ta, y = weight, 
+        xlab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        ylab = "Weight (kg)",
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+
+image2D(THP6, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = Ta, y = weight, 
+        xlab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        ylab = "Weight (kg)",
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+
+image2D(THP7, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = Ta, y = weight, 
+        xlab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        ylab = "Weight (kg)",
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+
+image2D(LHP, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = Ta, y = weight, 
+        xlab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        ylab = "Weight (kg)",
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+
+image2D(LHP2, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = Ta, y = weight, 
+        xlab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        ylab = "Weight (kg)",
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+
+image2D(LHP3, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = Ta, y = weight, 
+        xlab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        ylab = "Weight (kg)",
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+
+image2D(LHP4, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = Ta, y = weight, 
+        xlab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        ylab = "Weight (kg)",
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+
+image2D(THP - LHP, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = Ta, y = weight, 
+        xlab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        ylab = "Weight (kg)",
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+lines(Ta_ideal, weight, type = 'l', lwd = 5, col = 'gray')
+
+image2D(THP2 - LHP2, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = Ta, y = weight, 
+        xlab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        ylab = "Weight (kg)",
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+lines(Ta_ideal, weight, type = 'l', lwd = 5, col = 'gray')
+
+image2D(THP3 - LHP3, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = Ta, y = weight, 
+        xlab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        ylab = "Weight (kg)",
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+lines(Ta_ideal, weight, type = 'l', lwd = 5, col = 'gray')
+
+image2D(THP3 - LHP3, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = Ta, y = weight, 
+        xlab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        ylab = "Weight (kg)",
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+lines(Ta_ideal, weight, type = 'l', lwd = 5, col = 'gray')
+
+
+image2D(abs(THP - LHP - qs), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = Ta, y = weight, 
+        xlab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        ylab = "Weight (kg)",
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+lines(Ta_ideal, weight, type = 'l', lwd = 5, col = 'gray')
+
+image2D((THP - LHP - qs), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = Ta, y = weight, 
+        xlab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        ylab = "Weight (kg)",
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+lines(Ta_ideal, weight, type = 'l', lwd = 5, col = 'gray')
+
+image2D((THP - qs), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = Ta, y = weight, 
+        xlab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        ylab = "Weight (kg)",
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+lines(Ta_ideal, weight, type = 'l', lwd = 5, col = 'gray')
+
+image2D(abs(THP2 - LHP - qs), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = Ta, y = weight, 
+        xlab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        ylab = "Weight (kg)",
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+lines(Ta_ideal, weight, type = 'l', lwd = 5, col = 'gray')
+
+image2D((THP2 - LHP - qs), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = Ta, y = weight, 
+        xlab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        ylab = "Weight (kg)",
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+lines(Ta_ideal, weight, type = 'l', lwd = 5, col = 'gray')
+
+image2D((THP2 - LHP/2 - qs), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = Ta, y = weight, 
+        xlab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        ylab = "Weight (kg)",
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+lines(Ta_ideal, weight, type = 'l', lwd = 5, col = 'gray')
+
+image2D((THP2 - LHP2 - qs), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = Ta, y = weight, 
+        xlab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        ylab = "Weight (kg)",
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+lines(Ta_ideal, weight, type = 'l', lwd = 5, col = 'gray')
+
+image2D((THP3 - LHP3 - qs), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = Ta, y = weight, 
+        xlab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        ylab = "Weight (kg)",
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+lines(Ta_ideal, weight, type = 'l', lwd = 5, col = 'gray')
+
+image2D((THP3a - LHP3a - qs), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = Ta, y = weight, 
+        xlab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        ylab = "Weight (kg)",
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+lines(Ta_ideal, weight, type = 'l', lwd = 5, col = 'gray')
+
+image2D((THP3b - LHP3b - qs), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = Ta, y = weight, 
+        xlab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        ylab = "Weight (kg)",
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+lines(Ta_ideal, weight, type = 'l', lwd = 5, col = 'gray')
+
+image2D((THP2 - LHP3 - qs), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = Ta, y = weight, 
+        xlab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        ylab = "Weight (kg)",
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+lines(Ta_ideal, weight, type = 'l', lwd = 5, col = 'gray')
+
+image2D((THP4 - LHP4 - qs), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = Ta, y = weight, 
+        xlab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        ylab = "Weight (kg)",
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+lines(Ta_ideal, weight, type = 'l', lwd = 5, col = 'gray')
+
+image2D((THP5 - LHP5 - qs), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = Ta, y = weight, 
+        xlab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        ylab = "Weight (kg)",
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+lines(Ta_ideal, weight, type = 'l', lwd = 5, col = 'gray')
+
+plot(Ta, qs, type = 'l', lwd = 3)
+grid()
+
+
+plot(weight, Ta_ideal, type = 'l')
+
+# trying to get a function for qs
+# heat_supp_LM = rep(seq(0, 1000, 10), each = length(seq(0, 35, 0.5)))
+# qs_LM = lm(predictionsEnsemble_brooder_matrix[,2] ~ predictionsEnsemble_brooder_matrix[,8] + heat_supp_LM)
+                            # (Intercept)  predictionsEnsemble_brooder_matrix[, 8]                             heat_supp_LM  
+                            #     324.572                                   -8.648                                   -0.152
+# qs_LM_2 = lm(predictionsEnsemble_brooder_matrix[,2] ~ predictionsEnsemble_brooder_matrix[,8]*heat_supp_LM)
+# anova(qs_LM, qs_LM_2) # significant but the effect of the interaction is small
+```
+
+```{r}
+# Ploting temperatures and heat flux given air temperature in the pen
+ensemble_best = read.mat("../../ensembleData/KM/bestEnsembleSurface_0_500_10_30.mat")
+Ta_pen_min = 14.13
+Ta_pen_max = 17.7
+heat_supp_min = 0
+heat_supp_max = 200
+quantile = qnorm(0.975);
+
+heat_supp_plot = 0:500
+Ta_pen_plot = seq(10, 30, 0.1)
+
+predictionsEnsemble_matrix = matrix(ensemble_best$predictionsEnsemble, ncol = 13)
+# estimated Ts
+image2D(matrix(predictionsEnsemble_matrix[,1], 501, byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_pen_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature in the pen ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_pen_min, heat_supp_max, Ta_pen_max, lty = 2, lwd = 3)
+
+# estimated Ts upper CI
+image2D(matrix(predictionsEnsemble_matrix[,1] + quantile*predictionsEnsemble_matrix[,11], 501, byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_pen_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature in the pen ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_pen_min, heat_supp_max, Ta_pen_max, lty = 2, lwd = 3)
+
+# estimated Ts lower CI
+image2D(matrix(predictionsEnsemble_matrix[,1] - quantile*predictionsEnsemble_matrix[,11], 501, byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_pen_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature in the pen ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_pen_min, heat_supp_max, Ta_pen_max, lty = 2, lwd = 3)
+
+
+
+
+# estimated qs
+image2D(matrix(predictionsEnsemble_matrix[,2], 501, byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_pen_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature in the pen ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_pen_min, heat_supp_max, Ta_pen_max, lty = 2, lwd = 3)
+
+# estimated qs upper CI
+image2D(matrix(predictionsEnsemble_matrix[,2] + quantile*predictionsEnsemble_matrix[,12], 501, byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_pen_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature in the pen ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_pen_min, heat_supp_max, Ta_pen_max, lty = 2, lwd = 3)
+
+# estimated qs lower CI
+image2D(matrix(predictionsEnsemble_matrix[,2] - quantile*predictionsEnsemble_matrix[,12], 501, byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_pen_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature in the pen ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_pen_min, heat_supp_max, Ta_pen_max, lty = 2, lwd = 3)
+
+
+
+
+# estimated Th
+image2D(matrix(predictionsEnsemble_matrix[,3], 501, byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_pen_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature in the pen ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_pen_min, heat_supp_max, Ta_pen_max, lty = 2, lwd = 3)
+
+# estimated Th upper CI
+image2D(matrix(predictionsEnsemble_matrix[,3] + quantile*predictionsEnsemble_matrix[,13], 501, byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_pen_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature in the pen ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_pen_min, heat_supp_max, Ta_pen_max, lty = 2, lwd = 3)
+
+# estimated Th lower CI
+image2D(matrix(predictionsEnsemble_matrix[,3] - quantile*predictionsEnsemble_matrix[,13], 501, byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_pen_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature in the pen ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_pen_min, heat_supp_max, Ta_pen_max, lty = 2, lwd = 3)
+
+
+
+```
+
+```{r}
+# ploting heat flux and surface temperatures for a given brooder air temperature and supplemental heat
+ensemble_best_Ta_brooder = read.mat("../../ensembleData/KM/bestEnsembleSurfaceBrooder_0_1000_0_40.mat")
+Ta_brooder_min = 17.77
+Ta_brooder_max = 33.61
+heat_supp_min = 0
+heat_supp_max = 200
+quantile = qnorm(0.975);
+
+heat_supp_plot = seq(0, 1000, 1)
+Ta_brooder_plot = seq(0, 40, 0.1)
+
+predictionsEnsemble_brooder_matrix = matrix(ensemble_best_Ta_brooder$predictionsEnsemble, ncol = 13)
+# estimated Ts
+image2D(matrix(predictionsEnsemble_brooder_matrix[,1], length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+# estimated Ts upper CI
+image2D(matrix(predictionsEnsemble_brooder_matrix[,1] + quantile*predictionsEnsemble_brooder_matrix[,11], length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+# estimated Ts lower CI
+image2D(matrix(predictionsEnsemble_brooder_matrix[,1] - quantile*predictionsEnsemble_brooder_matrix[,11], length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+
+
+
+# estimated qs
+image2D(matrix(predictionsEnsemble_brooder_matrix[,2], length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+# estimated qs upper CI
+image2D(matrix(predictionsEnsemble_brooder_matrix[,2] + quantile*predictionsEnsemble_brooder_matrix[,12], length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+# estimated qs lower CI
+image2D(matrix(predictionsEnsemble_brooder_matrix[,2] - quantile*predictionsEnsemble_brooder_matrix[,12], length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+
+
+
+# estimated Th
+image2D(matrix(predictionsEnsemble_brooder_matrix[,3], length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+# estimated Th upper CI
+image2D(matrix(predictionsEnsemble_brooder_matrix[,3] + quantile*predictionsEnsemble_brooder_matrix[,13], length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+# estimated Th lower CI
+image2D(matrix(predictionsEnsemble_brooder_matrix[,3] - quantile*predictionsEnsemble_brooder_matrix[,13], length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+
+
+```
+
+
+```{r}
+# Regression Th given air temperature and weight for brooder
+heat_supp_plot = seq(0, 1000, 1) # updated step to 1
+Ta_brooder_plot = seq(0, 40, 0.1) # update step to 0.1
+
+reg.dataset = data.frame(Th = predictionsEnsemble_brooder_matrix[,3], Ts = predictionsEnsemble_brooder_matrix[,1], qs = predictionsEnsemble_brooder_matrix[,2], Ta = Ta_brooder_plot, H = rep(heat_supp_plot, each = length(Ta_brooder_plot) ) )
+
+Th.lm1 = lm(Th ~ Ta*H, data=reg.dataset)
+summary(Th.lm1)
+anova(Th.lm1)
+Th.lm1.predictions = predict(Th.lm1, reg.dataset)
+
+image2D( matrix(Th.lm1.predictions, length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+# Trying square terms
+Th.lm2 = lm(Th ~ poly(Ta, 2, raw = T)*poly(H, 2, raw = T), data=reg.dataset)
+summary(Th.lm2)
+anova(Th.lm2)
+Th.lm2.predictions = predict(Th.lm2, reg.dataset)
+
+image2D( matrix(Th.lm2.predictions, length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+# Trying cubic terms
+Th.lm3 = lm(Th ~ poly(Ta, 3, raw = T)*poly(H, 3, raw = T), data=reg.dataset)
+summary(Th.lm3)
+anova(Th.lm3)
+Th.lm3.predictions = predict(Th.lm3, reg.dataset)
+
+image2D( matrix(Th.lm3.predictions, length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")),
+        colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot,
+        xlab = "Supplemental heat (W)",
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+# square looks really good for Th
+
+
+
+# regressions for Ts
+Ts.lm1 = lm(Ts ~ Ta*H, data=reg.dataset)
+summary(Ts.lm1)
+anova(Ts.lm1)
+Ts.lm1.predictions = predict(Ts.lm1, reg.dataset)
+
+image2D( matrix(Ts.lm1.predictions, length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+# Trying square terms
+Ts.lm2 = lm(Ts ~ poly(Ta, 2, raw = T)*poly(H, 2, raw = T), data=reg.dataset)
+summary(Ts.lm2)
+anova(Ts.lm2)
+Ts.lm2.predictions = predict(Ts.lm2, reg.dataset)
+
+image2D( matrix(Ts.lm2.predictions, length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+# Trying cubic terms
+Ts.lm3 = lm(Ts ~ poly(Ta, 3, raw = T)*poly(H, 3, raw = T), data=reg.dataset)
+summary(Ts.lm3)
+anova(Ts.lm3)
+Ts.lm3.predictions = predict(Ts.lm3, reg.dataset)
+
+image2D( matrix(Ts.lm3.predictions, length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+# square looks really good for Ts
+
+
+
+# regressions for qs
+qs.lm1 = lm(qs ~ Ta*H, data=reg.dataset)
+summary(qs.lm1)
+anova(qs.lm1)
+qs.lm1.predictions = predict(qs.lm1, reg.dataset)
+
+image2D( matrix(qs.lm1.predictions, length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+# Trying square terms
+qs.lm2 = lm(qs ~ poly(Ta, 2, raw = T)*poly(H, 2, raw = T), data=reg.dataset)
+summary(qs.lm2)
+anova(qs.lm2)
+qs.lm2.predictions = predict(qs.lm2, reg.dataset)
+
+image2D( matrix(qs.lm2.predictions, length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+# Trying cubic terms
+qs.lm3 = lm(qs ~ poly(Ta, 3, raw = T)*poly(H, 3, raw = T), data=reg.dataset)
+summary(qs.lm3)
+anova(qs.lm3)
+qs.lm3.predictions = predict(qs.lm3, reg.dataset)
+
+image2D( matrix(qs.lm3.predictions, length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+# square looks really good for qs
+```
+
+
+```{r}
+# ploting heat flux and surface temperatures for a given brooder air temperature and supplementa heat
+ensemble_best_Ta_brooderAddedInc = read.mat("../../ensembleData/KM/bestEnsembleSurfaceBrooderAddedInc_0_1000_0_40.mat")
+Ta_brooder_min = 17.77
+Ta_brooder_max = 33.61
+heat_supp_min = 0
+heat_supp_max = 200
+quantile = qnorm(0.975);
+
+heat_supp_plot = seq(0, 1000, 1) # updated step to 1
+Ta_brooder_plot = seq(0, 40, 0.1) # update step to 0.1
+
+predictionsEnsemble_brooderAddedInc_matrix = matrix(ensemble_best_Ta_brooderAddedInc$predictionsEnsemble, ncol = 13)
+# estimated Ts
+image2D(matrix(predictionsEnsemble_brooderAddedInc_matrix[,1], length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+# estimated Ts upper CI
+image2D(matrix(predictionsEnsemble_brooderAddedInc_matrix[,1] + quantile*predictionsEnsemble_brooderAddedInc_matrix[,11], length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+# estimated Ts lower CI
+image2D(matrix(predictionsEnsemble_brooderAddedInc_matrix[,1] - quantile*predictionsEnsemble_brooderAddedInc_matrix[,11], length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+
+
+
+# estimated qs
+image2D(matrix(predictionsEnsemble_brooderAddedInc_matrix[,2], length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+# estimated qs upper CI
+image2D(matrix(predictionsEnsemble_brooderAddedInc_matrix[,2] + quantile*predictionsEnsemble_brooderAddedInc_matrix[,12], length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+# estimated qs lower CI
+image2D(matrix(predictionsEnsemble_brooderAddedInc_matrix[,2] - quantile*predictionsEnsemble_brooderAddedInc_matrix[,12], length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+
+
+
+# estimated Th
+image2D(matrix(predictionsEnsemble_brooderAddedInc_matrix[,3], length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+# estimated Th upper CI
+image2D(matrix(predictionsEnsemble_brooderAddedInc_matrix[,3] + quantile*predictionsEnsemble_brooderAddedInc_matrix[,13], length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+# estimated Th lower CI
+image2D(matrix(predictionsEnsemble_brooderAddedInc_matrix[,3] - quantile*predictionsEnsemble_brooderAddedInc_matrix[,13], length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+```
+
+
+```{r}
+# Regression Th given air temperature and weight for brooderAddedInc
+heat_supp_plot = seq(0, 1000, 1) # updated step to 1
+Ta_brooder_plot = seq(0, 40, 0.1) # update step to 0.1
+
+reg.added.dataset = data.frame(Th = predictionsEnsemble_brooderAddedInc_matrix[,3], Ts = predictionsEnsemble_brooderAddedInc_matrix[,1], qs = predictionsEnsemble_brooderAddedInc_matrix[,2], Ta = Ta_brooder_plot, H = rep(heat_supp_plot, each = length(Ta_brooder_plot) ) )
+
+Th.added.lm1 = lm(Th ~ Ta*H, data=reg.added.dataset)
+summary(Th.added.lm1)
+anova(Th.added.lm1)
+Th.added.lm1.predictions = predict(Th.added.lm1, reg.added.dataset)
+
+image2D( matrix(Th.added.lm1.predictions, length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+# Trying square terms
+Th.added.lm2 = lm(Th ~ poly(Ta, 2, raw = T)*poly(H, 2, raw = T), data=reg.added.dataset)
+summary(Th.added.lm2)
+anova(Th.added.lm2)
+Th.added.lm2.predictions = predict(Th.added.lm2, reg.added.dataset)
+
+image2D( matrix(Th.added.lm2.predictions, length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+# Trying cubic terms
+Th.added.lm3 = lm(Th ~ poly(Ta, 3, raw = T)*poly(H, 3, raw = T), data=reg.added.dataset)
+summary(Th.added.lm3)
+anova(Th.added.lm3)
+Th.added.lm3.predictions = predict(Th.added.lm3, reg.added.dataset)
+
+image2D( matrix(Th.added.lm3.predictions, length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")),
+        colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot,
+        xlab = "Supplemental heat (W)",
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+# square looks really good for Th
+
+
+
+# regressions for Ts
+Ts.added.lm1 = lm(Ts ~ Ta*H, data=reg.added.dataset)
+summary(Ts.added.lm1)
+anova(Ts.added.lm1)
+Ts.added.lm1.predictions = predict(Ts.added.lm1, reg.added.dataset)
+
+image2D( matrix(Ts.added.lm1.predictions, length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+# Trying square terms
+Ts.added.lm2 = lm(Ts ~ poly(Ta, 2, raw = T)*poly(H, 2, raw = T), data=reg.added.dataset)
+summary(Ts.added.lm2)
+anova(Ts.added.lm2)
+Ts.added.lm2.predictions = predict(Ts.added.lm2, reg.added.dataset)
+
+image2D( matrix(Ts.added.lm2.predictions, length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+# Trying cubic terms
+Ts.added.lm3 = lm(Ts ~ poly(Ta, 3, raw = T)*poly(H, 3, raw = T), data=reg.added.dataset)
+summary(Ts.added.lm3)
+anova(Ts.added.lm3)
+Ts.added.lm3.predictions = predict(Ts.added.lm3, reg.added.dataset)
+
+image2D( matrix(Ts.added.lm3.predictions, length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+# square looks really good for Ts
+
+
+
+# regressions for qs
+qs.added.lm1 = lm(qs ~ Ta*H, data=reg.added.dataset)
+summary(qs.added.lm1)
+anova(qs.added.lm1)
+qs.added.lm1.predictions = predict(qs.added.lm1, reg.added.dataset)
+
+image2D( matrix(qs.added.lm1.predictions, length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+# Trying square terms
+qs.added.lm2 = lm(qs ~ poly(Ta, 2, raw = T)*poly(H, 2, raw = T), data=reg.added.dataset)
+summary(qs.added.lm2)
+anova(qs.added.lm2)
+qs.added.lm2.predictions = predict(qs.added.lm2, reg.added.dataset)
+
+image2D( matrix(qs.added.lm2.predictions, length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+# Trying cubic terms
+qs.added.lm3 = lm(qs ~ poly(Ta, 3, raw = T)*poly(H, 3, raw = T), data=reg.added.dataset)
+summary(qs.added.lm3)
+anova(qs.added.lm3)
+qs.added.lm3.predictions = predict(qs.added.lm3, reg.added.dataset)
+
+image2D( matrix(qs.added.lm3.predictions, length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
+        xlab = "Supplemental heat (W)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
+rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+# square looks really good for qs
+```
+
+```{r}
+# energy flux balance for Ta_pen and supplemental heat
+supplemental_heat = read.mat("../../ensembleData/KM/bestEnsembleSurface_0_500_10_30_EnergyFluxBalance.mat")
+weight_min = 2.162
+weight_max = 6.1
+Ta_pen_min = 14.13
+Ta_pen_max = 17.7
+
+# removing small noise in the energy imbalance
+# since we are expecting a negative energy balance for heat stress (gaining more energy than lossing), we calculate
+# the absolute value and negate it
+supplemental_heat$min_val_lower_neg_abs = -abs(supplemental_heat$min_val_lower_real)
+supplemental_heat$min_val_lower_neg_abs_filt = supplemental_heat$min_val_lower_neg_abs
+# we manually remove any values that are above a threshold. Threshold was chosen manually
+supplemental_heat$min_val_lower_neg_abs_filt[supplemental_heat$min_val_lower_neg_abs_filt > -1.8] = 0 
+
+supplemental_heat$min_val_mean_neg_abs = -abs(supplemental_heat$min_val_mean_real)
+supplemental_heat$min_val_mean_neg_abs_filt = supplemental_heat$min_val_mean_neg_abs
+# we manually remove any values that are above a threshold. Threshold was chosen manually
+supplemental_heat$min_val_mean_neg_abs_filt[supplemental_heat$min_val_mean_neg_abs_filt > -1.8] = 0 
+
+supplemental_heat$min_val_median_neg_abs = -abs(supplemental_heat$min_val_median_real)
+supplemental_heat$min_val_median_neg_abs_filt = supplemental_heat$min_val_median_neg_abs
+# we manually remove any values that are above a threshold. Threshold was chosen manually
+supplemental_heat$min_val_median_neg_abs_filt[supplemental_heat$min_val_median_neg_abs_filt > -1.8] = 0 
+
+supplemental_heat$min_val_upper_neg_abs = -abs(supplemental_heat$min_val_upper_real)
+supplemental_heat$min_val_upper_neg_abs_filt = supplemental_heat$min_val_upper_neg_abs
+# we manually remove any values that are above a threshold. Threshold was chosen manually
+supplemental_heat$min_val_upper_neg_abs_filt[supplemental_heat$min_val_upper_neg_abs_filt > -1.8] = 0 
+
+
+# lower CI
+image2D(supplemental_heat$min_power_lower_real, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = supplemental_heat$weights, y = supplemental_heat$Ta_pen_surface_initial, 
+        xlab = "Weight (kg)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6, xaxt = "n")
+axis(1, c(1, 5, 10, 15, 20), cex.axis = 1.4, mgp=c(2.3,0.7,0))
+rect(weight_min, Ta_pen_min, weight_max, Ta_pen_max, lty = 2, lwd = 3)
+
+# lower CI
+image2D(supplemental_heat$min_val_lower_neg_abs_filt, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = supplemental_heat$weights, y = supplemental_heat$Ta_pen_surface_initial, 
+        xlab = "Weight (kg)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6, xaxt = "n")
+axis(1, c(1, 5, 10, 15, 20), cex.axis = 1.4, mgp=c(2.3,0.7,0))
+rect(weight_min, Ta_pen_min, weight_max, Ta_pen_max, lty = 2, lwd = 3)
+
+
+
+# mean
+image2D(supplemental_heat$min_power_mean_real, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = supplemental_heat$weights, y = supplemental_heat$Ta_pen_surface_initial, 
+        xlab = "Weight (kg)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6, xaxt = "n")
+axis(1, c(1, 5, 10, 15, 20), cex.axis = 1.4, mgp=c(2.3,0.7,0))
+rect(weight_min, Ta_pen_min, weight_max, Ta_pen_max, lty = 2, lwd = 3)
+
+# mean
+image2D(supplemental_heat$min_val_mean_neg_abs_filt, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = supplemental_heat$weights, y = supplemental_heat$Ta_pen_surface_initial, 
+        xlab = "Weight (kg)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6, xaxt = "n")
+axis(1, c(1, 5, 10, 15, 20), cex.axis = 1.4, mgp=c(2.3,0.7,0))
+rect(weight_min, Ta_pen_min, weight_max, Ta_pen_max, lty = 2, lwd = 3)
+
+
+# median
+image2D(supplemental_heat$min_power_median_real, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = supplemental_heat$weights, y = supplemental_heat$Ta_pen_surface_initial, 
+        xlab = "Weight (kg)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6, xaxt = "n")
+axis(1, c(1, 5, 10, 15, 20), cex.axis = 1.4, mgp=c(2.3,0.7,0))
+rect(weight_min, Ta_pen_min, weight_max, Ta_pen_max, lty = 2, lwd = 3)
+
+# median
+image2D(supplemental_heat$min_val_median_neg_abs_filt, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = supplemental_heat$weights, y = supplemental_heat$Ta_pen_surface_initial, 
+        xlab = "Weight (kg)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6, xaxt = "n")
+axis(1, c(1, 5, 10, 15, 20), cex.axis = 1.4, mgp=c(2.3,0.7,0))
+rect(weight_min, Ta_pen_min, weight_max, Ta_pen_max, lty = 2, lwd = 3)
+
+
+
+# upper CI
+image2D(supplemental_heat$min_power_upper_real, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = supplemental_heat$weights, y = supplemental_heat$Ta_pen_surface_initial, 
+        xlab = "Weight (kg)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6, xaxt = "n")
+axis(1, c(1, 5, 10, 15, 20), cex.axis = 1.4, mgp=c(2.3,0.7,0))
+rect(weight_min, Ta_pen_min, weight_max, Ta_pen_max, lty = 2, lwd = 3)
+
+# upper CI
+image2D(supplemental_heat$min_val_upper_neg_abs_filt, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = supplemental_heat$weights, y = supplemental_heat$Ta_pen_surface_initial, 
+        xlab = "Weight (kg)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6, xaxt = "n")
+axis(1, c(1, 5, 10, 15, 20), cex.axis = 1.4, mgp=c(2.3,0.7,0))
+rect(weight_min, Ta_pen_min, weight_max, Ta_pen_max, lty = 2, lwd = 3)
+```
+
+
+
+```{r}
+# Energy flux balance given Ta_brooder and supplemental heat.
+supplemental_heat_Ta_brooder = read.mat("../../ensembleData/KM/bestEnsembleSurfaceBrooder_0_1000_0_40_EnergyFluxBalance.mat") # needs to be updated
+weight_min = 2.162
+weight_max = 6.1
+Ta_brooder_min = 17.77
+Ta_brooder_max = 33.61
+
+# removing small noise in the energy imbalance
+# since we are expecting a negative energy balance for heat stress (gaining more energy than lossing), we calculate
+# the absolute value and negate it
+supplemental_heat_Ta_brooder$min_val_lower_neg_abs = -abs(supplemental_heat_Ta_brooder$min_val_lower_real)
+supplemental_heat_Ta_brooder$min_val_lower_neg_abs_filt = supplemental_heat_Ta_brooder$min_val_lower_neg_abs
+# we manually remove any values that are above a threshold. Threshold was chosen manually
+supplemental_heat_Ta_brooder$min_val_lower_neg_abs_filt[supplemental_heat_Ta_brooder$min_val_lower_neg_abs_filt > -1.8] = 0 
+
+supplemental_heat_Ta_brooder$min_val_mean_neg_abs = -abs(supplemental_heat_Ta_brooder$min_val_mean_real)
+supplemental_heat_Ta_brooder$min_val_mean_neg_abs_filt = supplemental_heat_Ta_brooder$min_val_mean_neg_abs
+# we manually remove any values that are above a threshold. Threshold was chosen manually
+supplemental_heat_Ta_brooder$min_val_mean_neg_abs_filt[supplemental_heat_Ta_brooder$min_val_mean_neg_abs_filt > -1.8] = 0 
+
+supplemental_heat_Ta_brooder$min_val_median_neg_abs = -abs(supplemental_heat_Ta_brooder$min_val_median_real)
+supplemental_heat_Ta_brooder$min_val_median_neg_abs_filt = supplemental_heat_Ta_brooder$min_val_median_neg_abs
+# we manually remove any values that are above a threshold. Threshold was chosen manually
+supplemental_heat_Ta_brooder$min_val_median_neg_abs_filt[supplemental_heat_Ta_brooder$min_val_median_neg_abs_filt > -1.8] = 0 
+
+supplemental_heat_Ta_brooder$min_val_upper_neg_abs = -abs(supplemental_heat_Ta_brooder$min_val_upper_real)
+supplemental_heat_Ta_brooder$min_val_upper_neg_abs_filt = supplemental_heat_Ta_brooder$min_val_upper_neg_abs
+# we manually remove any values that are above a threshold. Threshold was chosen manually
+supplemental_heat_Ta_brooder$min_val_upper_neg_abs_filt[supplemental_heat_Ta_brooder$min_val_upper_neg_abs_filt > -1.8] = 0 
+
+
+# lower CI
+image2D(supplemental_heat_Ta_brooder$min_power_lower_real, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = supplemental_heat_Ta_brooder$weights, y = supplemental_heat_Ta_brooder$Ta_pen_surface_initial, 
+        xlab = "Weight (kg)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6, xaxt = "n")
+axis(1, c(1, 5, 10, 15, 20), cex.axis = 1.4, mgp=c(2.3,0.7,0))
+rect(weight_min, Ta_brooder_min, weight_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+# lower CI
+image2D(supplemental_heat_Ta_brooder$min_val_lower_neg_abs_filt, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = supplemental_heat_Ta_brooder$weights, y = supplemental_heat_Ta_brooder$Ta_pen_surface_initial, 
+        xlab = "Weight (kg)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6, xaxt = "n")
+axis(1, c(1, 5, 10, 15, 20), cex.axis = 1.4, mgp=c(2.3,0.7,0))
+rect(weight_min, Ta_brooder_min, weight_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+
+
+# mean
+image2D(supplemental_heat_Ta_brooder$min_power_mean_real, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = supplemental_heat_Ta_brooder$weights, y = supplemental_heat_Ta_brooder$Ta_pen_surface_initial, 
+        xlab = "Weight (kg)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6, xaxt = "n")
+axis(1, c(1, 5, 10, 15, 20), cex.axis = 1.4, mgp=c(2.3,0.7,0))
+rect(weight_min, Ta_brooder_min, weight_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+# mean
+image2D(supplemental_heat_Ta_brooder$min_val_mean_neg_abs_filt, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = supplemental_heat_Ta_brooder$weights, y = supplemental_heat_Ta_brooder$Ta_pen_surface_initial, 
+        xlab = "Weight (kg)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6, xaxt = "n")
+axis(1, c(1, 5, 10, 15, 20), cex.axis = 1.4, mgp=c(2.3,0.7,0))
+rect(weight_min, Ta_brooder_min, weight_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+
+# median
+image2D(supplemental_heat_Ta_brooder$min_power_median_real, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = supplemental_heat_Ta_brooder$weights, y = supplemental_heat_Ta_brooder$Ta_pen_surface_initial, 
+        xlab = "Weight (kg)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6, xaxt = "n")
+axis(1, c(1, 5, 10, 15, 20), cex.axis = 1.4, mgp=c(2.3,0.7,0))
+rect(weight_min, Ta_brooder_min, weight_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+# median
+image2D(supplemental_heat_Ta_brooder$min_val_median_neg_abs_filt, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = supplemental_heat_Ta_brooder$weights, y = supplemental_heat_Ta_brooder$Ta_pen_surface_initial, 
+        xlab = "Weight (kg)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6, xaxt = "n")
+axis(1, c(1, 5, 10, 15, 20), cex.axis = 1.4, mgp=c(2.3,0.7,0))
+rect(weight_min, Ta_brooder_min, weight_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+
+
+# upper CI
+image2D(supplemental_heat_Ta_brooder$min_power_upper_real, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = supplemental_heat_Ta_brooder$weights, y = supplemental_heat_Ta_brooder$Ta_pen_surface_initial, 
+        xlab = "Weight (kg)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6, xaxt = "n")
+axis(1, c(1, 5, 10, 15, 20), cex.axis = 1.4, mgp=c(2.3,0.7,0))
+rect(weight_min, Ta_brooder_min, weight_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+# upper CI
+image2D(supplemental_heat_Ta_brooder$min_val_upper_neg_abs_filt, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = supplemental_heat_Ta_brooder$weights, y = supplemental_heat_Ta_brooder$Ta_pen_surface_initial, 
+        xlab = "Weight (kg)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6, xaxt = "n")
+axis(1, c(1, 5, 10, 15, 20), cex.axis = 1.4, mgp=c(2.3,0.7,0))
+rect(weight_min, Ta_brooder_min, weight_max, Ta_brooder_max, lty = 2, lwd = 3)
+```
+
+
+```{r}
+# Energy balance give Ta_brooder and the effects the supplemental heat will have on Ta_brooder
+supplemental_heat_Ta_brooderAddedInc = read.mat("../../ensembleData/KM/bestEnsembleSurfaceBrooderAddedInc_0_1000_0_40_EnergyFluxBalance.mat")
+weight_min = 2.162
+weight_max = 6.1
+Ta_brooder_min = 17.77
+Ta_brooder_max = 33.61
+
+# removing small noise in the energy imbalance
+# since we are expecting a negative energy balance for heat stress (gaining more energy than lossing), we calculate
+# the absolute value and negate it
+supplemental_heat_Ta_brooderAddedInc$min_val_lower_neg_abs = -abs(supplemental_heat_Ta_brooderAddedInc$min_val_lower_real)
+supplemental_heat_Ta_brooderAddedInc$min_val_lower_neg_abs_filt = supplemental_heat_Ta_brooderAddedInc$min_val_lower_neg_abs
+# we manually remove any values that are above a threshold. Threshold was chosen manually
+supplemental_heat_Ta_brooderAddedInc$min_val_lower_neg_abs_filt[supplemental_heat_Ta_brooderAddedInc$min_val_lower_neg_abs_filt > -1.8] = 0 
+
+supplemental_heat_Ta_brooderAddedInc$min_val_mean_neg_abs = -abs(supplemental_heat_Ta_brooderAddedInc$min_val_mean_real)
+supplemental_heat_Ta_brooderAddedInc$min_val_mean_neg_abs_filt = supplemental_heat_Ta_brooderAddedInc$min_val_mean_neg_abs
+# we manually remove any values that are above a threshold. Threshold was chosen manually
+supplemental_heat_Ta_brooderAddedInc$min_val_mean_neg_abs_filt[supplemental_heat_Ta_brooderAddedInc$min_val_mean_neg_abs_filt > -1.8] = 0 
+
+supplemental_heat_Ta_brooderAddedInc$min_val_median_neg_abs = -abs(supplemental_heat_Ta_brooderAddedInc$min_val_median_real)
+supplemental_heat_Ta_brooderAddedInc$min_val_median_neg_abs_filt = supplemental_heat_Ta_brooderAddedInc$min_val_median_neg_abs
+# we manually remove any values that are above a threshold. Threshold was chosen manually
+supplemental_heat_Ta_brooderAddedInc$min_val_median_neg_abs_filt[supplemental_heat_Ta_brooderAddedInc$min_val_median_neg_abs_filt > -1.8] = 0 
+
+supplemental_heat_Ta_brooderAddedInc$min_val_upper_neg_abs = -abs(supplemental_heat_Ta_brooderAddedInc$min_val_upper_real)
+supplemental_heat_Ta_brooderAddedInc$min_val_upper_neg_abs_filt = supplemental_heat_Ta_brooderAddedInc$min_val_upper_neg_abs
+# we manually remove any values that are above a threshold. Threshold was chosen manually
+supplemental_heat_Ta_brooderAddedInc$min_val_upper_neg_abs_filt[supplemental_heat_Ta_brooderAddedInc$min_val_upper_neg_abs_filt > -1.8] = 0 
+
+
+# lower CI
+image2D(supplemental_heat_Ta_brooderAddedInc$min_power_lower_real, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = supplemental_heat_Ta_brooderAddedInc$weights, y = supplemental_heat_Ta_brooderAddedInc$Ta_pen_surface_initial, 
+        xlab = "Weight (kg)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6, xaxt = "n")
+axis(1, c(1, 5, 10, 15, 20), cex.axis = 1.4, mgp=c(2.3,0.7,0))
+rect(weight_min, Ta_brooder_min, weight_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+# lower CI
+image2D(supplemental_heat_Ta_brooderAddedInc$min_val_lower_neg_abs_filt, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = supplemental_heat_Ta_brooderAddedInc$weights, y = supplemental_heat_Ta_brooderAddedInc$Ta_pen_surface_initial, 
+        xlab = "Weight (kg)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6, xaxt = "n")
+axis(1, c(1, 5, 10, 15, 20), cex.axis = 1.4, mgp=c(2.3,0.7,0))
+rect(weight_min, Ta_brooder_min, weight_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+
+
+# mean
+image2D(supplemental_heat_Ta_brooderAddedInc$min_power_mean_real, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = supplemental_heat_Ta_brooderAddedInc$weights, y = supplemental_heat_Ta_brooderAddedInc$Ta_pen_surface_initial, 
+        xlab = "Weight (kg)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6, xaxt = "n")
+axis(1, c(1, 5, 10, 15, 20), cex.axis = 1.4, mgp=c(2.3,0.7,0))
+rect(weight_min, Ta_brooder_min, weight_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+# mean
+image2D(supplemental_heat_Ta_brooderAddedInc$min_val_mean_neg_abs_filt, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = supplemental_heat_Ta_brooderAddedInc$weights, y = supplemental_heat_Ta_brooderAddedInc$Ta_pen_surface_initial, 
+        xlab = "Weight (kg)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6, xaxt = "n")
+axis(1, c(1, 5, 10, 15, 20), cex.axis = 1.4, mgp=c(2.3,0.7,0))
+rect(weight_min, Ta_brooder_min, weight_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+
+# median
+image2D(supplemental_heat_Ta_brooderAddedInc$min_power_median_real, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = supplemental_heat_Ta_brooderAddedInc$weights, y = supplemental_heat_Ta_brooderAddedInc$Ta_pen_surface_initial, 
+        xlab = "Weight (kg)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6, xaxt = "n")
+axis(1, c(1, 5, 10, 15, 20), cex.axis = 1.4, mgp=c(2.3,0.7,0))
+rect(weight_min, Ta_brooder_min, weight_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+# median
+image2D(supplemental_heat_Ta_brooderAddedInc$min_val_median_neg_abs_filt, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = supplemental_heat_Ta_brooderAddedInc$weights, y = supplemental_heat_Ta_brooderAddedInc$Ta_pen_surface_initial, 
+        xlab = "Weight (kg)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6, xaxt = "n")
+axis(1, c(1, 5, 10, 15, 20), cex.axis = 1.4, mgp=c(2.3,0.7,0))
+rect(weight_min, Ta_brooder_min, weight_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+
+
+# upper CI
+image2D(supplemental_heat_Ta_brooderAddedInc$min_power_upper_real, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = supplemental_heat_Ta_brooderAddedInc$weights, y = supplemental_heat_Ta_brooderAddedInc$Ta_pen_surface_initial, 
+        xlab = "Weight (kg)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6, xaxt = "n")
+axis(1, c(1, 5, 10, 15, 20), cex.axis = 1.4, mgp=c(2.3,0.7,0))
+rect(weight_min, Ta_brooder_min, weight_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+# upper CI
+image2D(supplemental_heat_Ta_brooderAddedInc$min_val_upper_neg_abs_filt, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = supplemental_heat_Ta_brooderAddedInc$weights, y = supplemental_heat_Ta_brooderAddedInc$Ta_pen_surface_initial, 
+        xlab = "Weight (kg)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6, xaxt = "n")
+axis(1, c(1, 5, 10, 15, 20), cex.axis = 1.4, mgp=c(2.3,0.7,0))
+rect(weight_min, Ta_brooder_min, weight_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+```
+
+```{r}
+# obtaining thermoneutral zones for Ta_brooderAddedInc
+max(which(supplemental_heat_Ta_brooderAddedInc$min_val_upper_neg_abs_filt[i1,] == 0))
+# obtaining thermoneutral zones
+Ta_neutral_Ta_brooderAddedInc_lower  = rep(-Inf, length.out = length(supplemental_heat_Ta_brooderAddedInc$weights))
+Ta_neutral_Ta_brooderAddedInc_mean   = rep(-Inf, length.out = length(supplemental_heat_Ta_brooderAddedInc$weights))
+Ta_neutral_Ta_brooderAddedInc_median = rep(-Inf, length.out = length(supplemental_heat_Ta_brooderAddedInc$weights))
+Ta_neutral_Ta_brooderAddedInc_upper  = rep(-Inf, length.out = length(supplemental_heat_Ta_brooderAddedInc$weights))
+for (i1 in 1:length(supplemental_heat_Ta_brooderAddedInc$weights)){
+  Ta_neutral_Ta_brooderAddedInc_lower[i1]  = supplemental_heat_Ta_brooderAddedInc$Ta_pen_surface_initial[
+    max(which(supplemental_heat_Ta_brooderAddedInc$min_val_lower_neg_abs_filt[i1,] == 0))
+  ]
+  Ta_neutral_Ta_brooderAddedInc_mean[i1]   = supplemental_heat_Ta_brooderAddedInc$Ta_pen_surface_initial[
+    max(which(supplemental_heat_Ta_brooderAddedInc$min_val_mean_neg_abs_filt[i1,] == 0))
+  ] 
+  Ta_neutral_Ta_brooderAddedInc_median[i1] = supplemental_heat_Ta_brooderAddedInc$Ta_pen_surface_initial[
+    max(which(supplemental_heat_Ta_brooderAddedInc$min_val_median_neg_abs_filt[i1,] == 0))
+  ]
+  Ta_neutral_Ta_brooderAddedInc_upper[i1]  = supplemental_heat_Ta_brooderAddedInc$Ta_pen_surface_initial[
+    max(which(supplemental_heat_Ta_brooderAddedInc$min_val_upper_neg_abs_filt[i1,] == 0))
+  ]
+}
+
+Xin_Temps_lower  = ( c( 90, 86, 84, 83, 80, 78, 76, 73, 70, 68, 66,  64,  62,  60,  58,  56,  56,  56,  54,  54,  52,  52) - 32 )/1.8
+Xin_Temps_upper  = ( c( 95, 88, 88, 86, 86, 84, 84, 82, 82, 80, 80,  80,  80,  80,  80,  80,  80,  80,  80,  80,  80,  80) - 32 )/1.8
+Xin_Temps_weight = ( c(2.2, 12, 16, 20, 24, 30, 38, 46, 56, 68, 80, 92, 104, 116, 128, 141, 155, 171, 187, 215, 240, 260) )/2.20462
+# they first weight point is "at birth." I'm assuming it is 1kg
+
+BB.Tideal = 0.0015*supplemental_heat_Ta_brooderAddedInc$weights^2 - 0.2969*supplemental_heat_Ta_brooderAddedInc$weights + 30.537
+
+color.mine = "springgreen4"
+color.Xin = "royalblue4"
+color.Mount = "tomato4"
+color.BB = "darkslategray"
+
+lty.mine = 1
+lty.Xin = 3
+lty.Mount = 4
+lty.BB = 2
+
+lwd.mine.CI = 2.5
+lwd.mine = 4
+lwd.others = 4
+
+plot(supplemental_heat_Ta_brooderAddedInc$weights, Ta_neutral_Ta_brooderAddedInc_lower, type = 'l', ylim = c(14, 36), col = color.mine, lty = lty.mine, xaxs = "i", xaxt = "n",
+     ylab = expression(paste("Temperature ("^{o},"C)", sep = "")), mgp=c(2.3,0.7,0), xlab = "Weight (kg)", cex.axis = 1.4, cex.lab = 1.6, lwd = lwd.mine.CI)
+axis(1, c(1, 5, 10, 15, 20), cex.axis = 1.4, mgp=c(2.3,0.7,0))
+grid()
+lines(supplemental_heat_Ta_brooderAddedInc$weights, Ta_neutral_Ta_brooderAddedInc_lower, col = color.mine, lty = lty.mine, lwd = lwd.mine.CI)
+lines(supplemental_heat_Ta_brooderAddedInc$weights, Ta_neutral_Ta_brooderAddedInc_mean, col = color.mine, lty = lty.mine, lwd = lwd.mine)
+lines(supplemental_heat_Ta_brooderAddedInc$weights, Ta_neutral_Ta_brooderAddedInc_upper, col = color.mine, lty = lty.mine, lwd = lwd.mine.CI)
+rect(weight_min, Ta_brooder_min, weight_max, Ta_brooder_max, lty = 2, lwd = 1.5)
+
+# ploting Xin values
+lines(Xin_Temps_weight, Xin_Temps_upper, lwd = lwd.others, lty = lty.Xin, col = color.Xin)
+lines(Xin_Temps_weight, Xin_Temps_lower, lwd = lwd.others, lty = lty.Xin, col = color.Xin)
+# Mount (1960)
+lines(c(1, 2, 2, 4, 4, 8), c(35, 35, 35, 35, 30, 30), lwd = lwd.others, lty = lty.Mount, col = color.Mount)
+lines(c(1, 2, 2, 4, 4, 8), c(34, 34, 30, 30, 25, 25), lwd = lwd.others, lty = lty.Mount, col = color.Mount)
+# Brown-Brandl et al. (2004)
+lines(supplemental_heat_Ta_brooderAddedInc$weights, BB.Tideal, lwd = lwd.others, lty = lty.BB, col = color.BB)
+lines(supplemental_heat_Ta_brooderAddedInc$weights, BB.Tideal + 2, lwd = lwd.mine.CI, lty = lty.BB, col = color.BB)
+lines(supplemental_heat_Ta_brooderAddedInc$weights, BB.Tideal - 2, lwd = lwd.mine.CI, lty = lty.BB, col = color.BB)
+
+# Lower limit for thermoneutral zone is 34-35 oC, 30-35 oC, and 25-30 oC for piglets weighting 1-2 kg, 2-4 kg, and 4-8 kg, respectively. # Mount (1960)
+
+legend(6.2, 42.5, c("This paper", "Mount (1960)", "Harmon and Xin (1995)", "Brown-Brandl et al. (2004)"), lwd = 4, lty = c(lty.mine, lty.Mount, lty.Xin, lty.BB), col = c(color.mine, color.Mount, color.Xin, color.BB), cex = 1.4, xpd = NA) # will issue a warning. That's fine. It is complaining that I'm asking it to give me 2 columns but the number of lengeds I have is not a multiple of 2.
+#rect(3, 37.5, 18, 42.4, xpd = NA) # couldn't get a box nicely looking for the legend. Making one myself
+```
+
+```{r}
+# Regression optimum supplemental heat given air temperature and weight
+Hopt_dataset = data.frame(Hopt = as.vector(t(supplemental_heat_Ta_brooderAddedInc$min_power_mean_real)), Ta = supplemental_heat_Ta_brooderAddedInc$Ta_pen_surface_initial, W = rep(supplemental_heat_Ta_brooderAddedInc$weights, each = length(supplemental_heat_Ta_brooderAddedInc$Ta_pen_surface_initial) ) )
+Hopt_dataset$Hopt2 = Hopt_dataset$Hopt
+# discharging values lower than 5, as for removing noise
+Hopt_dataset$Hopt2[Hopt_dataset$Hopt2 < 5] = NA
+
+Hopt.lm1 = lm(Hopt2 ~ Ta*W, data=Hopt_dataset)
+summary(Hopt.lm1)
+anova(Hopt.lm1)
+Hopt.lm1.predictions = predict(Hopt.lm1, Hopt_dataset)
+Hopt.lm1.predictions[Hopt.lm1.predictions<0] = NA
+
+# This is is missing a little curve that exists near W = 1kg
+image2D( matrix(Hopt.lm1.predictions, nrow = 191, byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
+        colkey = FALSE, x = supplemental_heat_Ta_brooderAddedInc$weights, y = supplemental_heat_Ta_brooderAddedInc$Ta_pen_surface_initial, 
+        xlab = "Weight (kg)", 
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6, xaxt = "n")
+axis(1, c(1, 5, 10, 15, 20), cex.axis = 1.4, mgp=c(2.3,0.7,0))
+rect(weight_min, Ta_brooder_min, weight_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+Hopt.lm2 = lm(Hopt2 ~ poly(Ta,2, raw = T)*poly(W,2, raw = T), data=Hopt_dataset)
+summary(Hopt.lm2)
+anova(Hopt.lm2)
+Hopt.lm2.predictions = predict(Hopt.lm2, Hopt_dataset)
+Hopt.lm2.predictions[Hopt.lm2.predictions<0] = NA
+
+# This is is missing a little curve that exists near W = 1kg
+image2D( matrix(Hopt.lm2.predictions, nrow = 191, byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")),
+        colkey = FALSE, x = supplemental_heat_Ta_brooderAddedInc$weights, y = supplemental_heat_Ta_brooderAddedInc$Ta_pen_surface_initial,
+        xlab = "Weight (kg)",
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6, xaxt = "n")
+axis(1, c(1, 5, 10, 15, 20), cex.axis = 1.4, mgp=c(2.3,0.7,0))
+rect(weight_min, Ta_brooder_min, weight_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+
+# We will keep the 3rd degree polynomium with interactions
+Hopt.lm3 = lm(Hopt2 ~ poly(Ta,3, raw = T)*poly(W,3, raw = T), data=Hopt_dataset)
+summary(Hopt.lm3)
+anova(Hopt.lm3)
+Hopt.lm3.predictions = predict(Hopt.lm3, Hopt_dataset)
+Hopt.lm3.predictions[Hopt.lm3.predictions<0] = NA
+
+# This is is missing a little curve that exists near W = 1kg
+image2D( matrix(Hopt.lm3.predictions, nrow = 191, byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")),
+        colkey = FALSE, x = supplemental_heat_Ta_brooderAddedInc$weights, y = supplemental_heat_Ta_brooderAddedInc$Ta_pen_surface_initial,
+        xlab = "Weight (kg)",
+        ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6, xaxt = "n")
+axis(1, c(1, 5, 10, 15, 20), cex.axis = 1.4, mgp=c(2.3,0.7,0))
+rect(weight_min, Ta_brooder_min, weight_max, Ta_brooder_max, lty = 2, lwd = 3)
+
+```
+
