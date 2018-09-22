@@ -17,8 +17,4 @@ ANABHT is an open-source code used to predict the optimum supplemental heat of p
 This GitHub repository contains the code. For the input dataset and processed data, please see our [Open Science Framework project](https://osf.io/fsqxj/ "Project: Prediction of optimum supplemental heat for piglets").
 
 ### Refereces
-<<<<<<< HEAD
 Milan HFM, Maia ASC, Gebremedhin KG. Prediction of optimum supplemental heat for piglets. Submitted to Trans ASABE, 2018.
-=======
-Milan HFM, Maia ASC, Gebremedhin KG. Prediction of optimum supplemental heat for piglets. Submitted to Trans ASABE, 2018.
->>>>>>> bc0f9dc350ff0932102cc73b9a74b42aba8d4cc9
