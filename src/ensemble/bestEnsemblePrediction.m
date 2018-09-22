@@ -33,7 +33,7 @@ function predictionsEnsemble = bestEnsemblePrediction(heat_power_in = NA, ...
 %
 % Input:
 % heat_power_in: Power of the supplemental heat source (W). Can be a vector. Used to
-%                estimate Ta_pen, Ta_brooder, Tg_brooder, and Tr. If NA, will check
+%                estimate Ta_brooder, Tg_brooder, and Tr. If NA, will check
 %                if positions is NA. If so, will throw an error. If not, will load the
 %                measured dataset and solve the problem for the given positions.
 % Ta_pen_in: Air temperature inside the pen (oC). Can be a vector. Used to estimate Ta_brooder. 
