@@ -1,5 +1,3 @@
-[![DOI](https://zenodo.org/badge/61003231.svg)](https://zenodo.org/badge/latestdoi/61003231)
-
 # anabht 1.0.0
  ANABHT - ANAlytical solver for steady-state BioHeat Transfer problems in 1D
   
