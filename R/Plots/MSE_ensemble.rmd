@@ -45,7 +45,7 @@ color.variance = "goldenrod2"
 # sets 0, 1, and best
 positions.ploting = c(1:3)
 color.barplot = c(color.training, color.testing)
-barData = barplot(t(matrix(c(mse_ensemble$MSE_total_training[positions.ploting], mse_ensemble$MSE_total_testing[positions.ploting]), nrow = 3, byrow = F)), beside = T, ylab = expression(paste("Mean squared error ("^{o},"C" ^{2}, ")", sep = "")), cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), names.arg = c("EM", "EP", "MC"), col = color.barplot, ylim = c(0, 7.5))
+barData = barplot(t(matrix(c(mse_ensemble$MSE_total_training[positions.ploting], mse_ensemble$MSE_total_testing[positions.ploting]), nrow = 3, byrow = F)), beside = T, ylab = expression(paste("Mean squared error ("^{o},"C" ^{2}, ")", sep = "")), cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(2.1,0.7,0), names.arg = c("TM", "TP", "MC"), col = color.barplot, ylim = c(0, 7.5))
 
 legend("topright", c("Training", "Testing"), pch = 15, cex = 1.4, col = c(color.training, color.testing), horiz = F, x.intersp = 0.5)
 
@@ -72,7 +72,7 @@ legend("topright", c("Training", "CV", "Testing"), pch = 15, cex = 1.4, col = c(
 positions.ploting = c(4, 22, 17, 9, 12, 27)
 color.barplot = c(color.training, color.CV, color.testing, color.variance)
 par(mar = c(5, 3.5, 4, 0))
-barData = barplot(t(matrix(c(mse_ensemble$MSE_total_training[positions.ploting], mse_ensemble$MSE_total_CV[positions.ploting], mse_ensemble$MSE_total_testing[positions.ploting], mse_ensemble$avg_std2_total_testing[positions.ploting]), nrow = 6, byrow = F)), beside = T, ylab = expression(paste("MSE / Variance ("^{o},"C" ^{2}, ")", sep = "")), cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(1.6,0.7,0), names.arg = c("NB", "RO", "NO", "RB", "GB", "GO"), col = color.barplot, ylim = c(0, 4.8))
+barData = barplot(t(matrix(c(mse_ensemble$MSE_total_training[positions.ploting], mse_ensemble$MSE_total_CV[positions.ploting], mse_ensemble$MSE_total_testing[positions.ploting], mse_ensemble$avg_std2_total_testing[positions.ploting]), nrow = 6, byrow = F)), beside = T, ylab = expression(paste("MSE or Variance ("^{o},"C" ^{2}, ")", sep = "")), cex=1.6, cex.axis = 1.4, cex.lab = 1.6, mgp=c(1.6,0.7,0), names.arg = c("NB", "RO", "NO", "RB", "GB", "GO"), col = color.barplot, ylim = c(0, 4.8))
 
 
 # writing the number of sets

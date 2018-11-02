@@ -964,6 +964,169 @@ par(xpd = FALSE, mar = c(5, 4, 4, 2) + 0.1)
 legend(0, 36, c(expression(paste('T'["a"], " (LM)", sep="")), expression(paste('T'["g"], " (LM)", sep="")), expression(paste('T'["r"], " (LM)", sep=""))), col = c(Ta_brooder.color, Tg_brooder.color, Tr.color), lty = c(1, 1, 1), lwd = 2,  pch = c(NA, NA, NA), pt.cex = symbol.size, cex = 1.6, horiz = T, x.intersp = 0.3)
 ```
 
+
+
+```{r}
+# plot for mean temperatures and predictions when only Ta_pen is given
+mean.dataset = read.csv("../../../datasets/mean_values.csv")
+stderr.dataset = read.csv("../../../datasets/stderr_piglets.csv")
+
+mean.dataset.h2o = as.h2o(mean.dataset)
+
+mean_Ta_brooder_predictions = predict(LM.Ta_brooder_final_all, mean.dataset)
+mean_Tg_brooder_predictions = predict(LM.Tg_brooder_Ta_pen_final_all, mean.dataset)
+mean_Tr_predictions = predict(LM.Tr_RE_only_final, mean_piglets, re.form = NA)
+
+
+# Ploting mean values +- Stderr
+hours.plot = c(1, 2, 3, 4,   6, 7, 8, 9,   11, 12, 13, 14,   16, 17, 18, 19,   21, 22, 23, 24)
+Ta_brooder.color = "springgreen4"
+Tg_brooder.color = "royalblue3"
+Tr.color = "tomato4"
+
+measured.symbol = 16
+predicted.symbol = 15
+symbol.size = 1.3
+
+# export as 552 x 479
+################## Ploting for all (Ta_brooder, Tg_brooder, and Tr)
+par(mar = c(5, 4, 4.5, 2) + 0.1)
+plot(hours.plot, mean.dataset$Ta_brooder, xlim = c(1,24), ylim=c(19, 30), xaxt = "n", col = Ta_brooder.color, pch = measured.symbol, ylab = expression(paste("Temperature ("^{o},"C)", sep = "")), xlab = "Time (hour)", mgp=c(2.3,0.7,0), cex=symbol.size, cex.axis = 1.4, cex.lab = 1.6)
+# including ticks
+# axis(2, at = c(18:30), labels = FALSE)
+# power_source = 0
+axis(1, at = c(4, 5, 6, 7) - 3, labels = c(4, 5, 6, 7), cex.axis = 1.4)
+axis(1, at = c(5, 7) - 3, labels = c(5, 7), cex.axis = 1.4, tick = FALSE)
+# power_source = 60
+axis(1, at = 5+c(4, 5, 6, 7) - 3, labels = c(4, 5, 6, 7), cex.axis = 1.4)
+axis(1, at = 5+c(5, 7) - 3, labels = c(5, 7), cex.axis = 1.4, tick = FALSE)
+# power_source = 100
+axis(1, at = 10+c(4, 5, 6, 7) - 3, labels = c(4, 5, 6, 7), cex.axis = 1.4)
+axis(1, at = 10+c(5, 7) - 3, labels = c(5, 7), cex.axis = 1.4, tick = FALSE)
+# power_source = 160
+axis(1, at = 15+c(4, 5, 6, 7) - 3, labels = c(4, 5, 6, 7), cex.axis = 1.4)
+axis(1, at = 15+c(5, 7) - 3, labels = c(5, 7), cex.axis = 1.4, tick = FALSE)
+# power_source = 200
+axis(1, at = 20+c(4, 5, 6, 7) - 3, labels = c(4, 5, 6, 7), cex.axis = 1.4)
+axis(1, at = 20+c(5, 7) - 3, labels = c(5, 7), cex.axis = 1.4, tick = FALSE)
+
+# grid lines
+abline(h = 20, untf = FALSE, lty = 3, col = "gray")
+abline(h = 22, untf = FALSE, lty = 3, col = "gray")
+abline(h = 24, untf = FALSE, lty = 3, col = "gray")
+abline(h = 26, untf = FALSE, lty = 3, col = "gray")
+abline(h = 28, untf = FALSE, lty = 3, col = "gray")
+abline(h = 30, untf = FALSE, lty = 3, col = "gray")
+
+
+points(hours.plot, mean.dataset$Ta_brooder, col = Ta_brooder.color, pch = measured.symbol, cex=symbol.size)
+arrows(hours.plot, mean.dataset$Ta_brooder - stderr.dataset$Ta_brooder, hours.plot, mean.dataset$Ta_brooder + stderr.dataset$Ta_brooder, lwd = 1.5, angle = 90, code = 3, length = 0.05, col = Ta_brooder.color)
+
+points(hours.plot, mean_Ta_brooder_predictions, col = Ta_brooder.color, pch = predicted.symbol, cex=symbol.size)
+
+# Tg_brooder
+points(hours.plot, mean.dataset$Tg_brooder, col = Tg_brooder.color, pch = measured.symbol, cex=symbol.size)
+arrows(hours.plot, mean.dataset$Tg_brooder - stderr.dataset$Tg_brooder, hours.plot, mean.dataset$Tg_brooder + stderr.dataset$Tg_brooder, lwd = 1.5, angle = 90, code = 3, length = 0.05, col = Tg_brooder.color)
+
+points(hours.plot, mean_Tg_brooder_predictions, col = Tg_brooder.color, pch = predicted.symbol, cex=symbol.size)
+
+# separation lines
+abline(v=5, untf = FALSE, lty = 3)
+abline(v=10, untf = FALSE, lty = 3)
+abline(v=15, untf = FALSE, lty = 3)
+abline(v=20, untf = FALSE, lty = 3)
+
+# writing power
+par(xpd = TRUE)
+text(x = 2.5, y = 31, "0 W", cex = 1.6)
+text(x = 2.5+5, y = 31, "60 W", cex = 1.6)
+text(x = 2.5+10, y = 31, "100 W", cex = 1.6)
+text(x = 2.5+15, y = 31, "160 W", cex = 1.6)
+text(x = 2.5+20, y = 31, "200 W", cex = 1.6)
+par(xpd = FALSE, mar = c(5, 4, 4, 2) + 0.1)
+
+# Legend
+legend("topleft", c(expression(paste('T'["a"], " (LM)", sep="")), expression(paste('T'["g"], " (LM)", sep=""))), col = c(Ta_brooder.color, Tg_brooder.color), lty = c(1, 1), lwd = 2,  pch = c(NA, NA), pt.cex = symbol.size, cex = 1.6, horiz = T, x.intersp = 0.3, y.intersp = 0.5)
+```
+
+
+
+```{r}
+# plot for mean temperatures and predictions when only Ta_pen is given
+mean.dataset = read.csv("../../../datasets/mean_values.csv")
+stderr.dataset = read.csv("../../../datasets/stderr_piglets.csv")
+
+mean.dataset.h2o = as.h2o(mean.dataset)
+
+mean_Ta_brooder_predictions = predict(LM.Ta_brooder_final_all, mean.dataset)
+mean_Tg_brooder_predictions = predict(LM.Tg_brooder_Ta_pen_final_all, mean.dataset)
+mean_Tr_predictions = predict(LM.Tr_RE_only_final, mean_piglets, re.form = NA)
+
+
+# Ploting mean values +- Stderr
+hours.plot = c(1, 2, 3, 4,   6, 7, 8, 9,   11, 12, 13, 14,   16, 17, 18, 19,   21, 22, 23, 24)
+Ta_brooder.color = "springgreen4"
+Tg_brooder.color = "royalblue3"
+Tr.color = "tomato4"
+
+measured.symbol = 16
+predicted.symbol = 15
+symbol.size = 1.3
+
+# export as 552 x 479
+################## Ploting for all (Ta_brooder, Tg_brooder, and Tr)
+par(mar = c(5, 4, 4.5, 2) + 0.1)
+plot(hours.plot, mean.dataset$Tr, xlim = c(1,24), ylim=c(36.8, 38.8), xaxt = "n", col = Ta_brooder.color, pch = measured.symbol, ylab = expression(paste("Temperature ("^{o},"C)", sep = "")), xlab = "Time (hour)", mgp=c(2.3,0.7,0), cex=symbol.size, cex.axis = 1.4, cex.lab = 1.6)
+# including ticks
+# axis(2, at = c(18:30), labels = FALSE)
+# power_source = 0
+axis(1, at = c(4, 5, 6, 7) - 3, labels = c(4, 5, 6, 7), cex.axis = 1.4)
+axis(1, at = c(5, 7) - 3, labels = c(5, 7), cex.axis = 1.4, tick = FALSE)
+# power_source = 60
+axis(1, at = 5+c(4, 5, 6, 7) - 3, labels = c(4, 5, 6, 7), cex.axis = 1.4)
+axis(1, at = 5+c(5, 7) - 3, labels = c(5, 7), cex.axis = 1.4, tick = FALSE)
+# power_source = 100
+axis(1, at = 10+c(4, 5, 6, 7) - 3, labels = c(4, 5, 6, 7), cex.axis = 1.4)
+axis(1, at = 10+c(5, 7) - 3, labels = c(5, 7), cex.axis = 1.4, tick = FALSE)
+# power_source = 160
+axis(1, at = 15+c(4, 5, 6, 7) - 3, labels = c(4, 5, 6, 7), cex.axis = 1.4)
+axis(1, at = 15+c(5, 7) - 3, labels = c(5, 7), cex.axis = 1.4, tick = FALSE)
+# power_source = 200
+axis(1, at = 20+c(4, 5, 6, 7) - 3, labels = c(4, 5, 6, 7), cex.axis = 1.4)
+axis(1, at = 20+c(5, 7) - 3, labels = c(5, 7), cex.axis = 1.4, tick = FALSE)
+
+# grid lines
+abline(h = 37, untf = FALSE, lty = 3, col = "gray")
+abline(h = 37.5, untf = FALSE, lty = 3, col = "gray")
+abline(h = 38, untf = FALSE, lty = 3, col = "gray")
+abline(h = 38.5, untf = FALSE, lty = 3, col = "gray")
+
+# Tr
+points(hours.plot, mean.dataset$Tr, col = Tr.color, pch = measured.symbol, cex=symbol.size)
+arrows(hours.plot, mean.dataset$Tr - stderr.dataset$Tr, hours.plot, mean.dataset$Tr + stderr.dataset$Tr, lwd = 1.5, angle = 90, code = 3, length = 0.05, col = Tr.color)
+
+points(hours.plot, as.vector(mean_Tr_predictions), col = Tr.color, pch = predicted.symbol, cex=symbol.size)
+
+# separation lines
+abline(v=5, untf = FALSE, lty = 3)
+abline(v=10, untf = FALSE, lty = 3)
+abline(v=15, untf = FALSE, lty = 3)
+abline(v=20, untf = FALSE, lty = 3)
+
+# writing power
+par(xpd = TRUE)
+text(x = 2.5, y = 39, "0 W", cex = 1.6)
+text(x = 2.5+5, y = 39, "60 W", cex = 1.6)
+text(x = 2.5+10, y = 39, "100 W", cex = 1.6)
+text(x = 2.5+15, y = 39, "160 W", cex = 1.6)
+text(x = 2.5+20, y = 39, "200 W", cex = 1.6)
+par(xpd = FALSE, mar = c(5, 4, 4, 2) + 0.1)
+
+# Legend
+legend("bottomright", c(expression(paste('T'["r"], " (LM)", sep=""))), col = c(Tr.color), lty = c(1), lwd = 2,  pch = c(NA), pt.cex = symbol.size, cex = 1.6, horiz = T, x.intersp = 0.3, y.intersp = 0.5)
+```
+
+
 ```{r}
 # ploting mean percentage errors
 mean.dataset = read.csv("../../../datasets/mean_values.csv")
@@ -995,10 +1158,11 @@ Tr.symbol = 16
 plot.positions = c(1, 2, 3)
 plot.symbols = c(Ta_brooder.symbol, Tg_brooder.symbol, Tr.symbol)
 plot.colors = c(Ta_brooder.color, Tg_brooder.color, Tr.color)
-symbol.size = 1.4
+symbol.size = 2
 
 # export as 312 x 479
-plot(plot.positions, c(mean_Ta_brooder_percentage_error, mean_Tg_brooder_percentage_error, mean_Tr_percentage_error), xlim = c(1,3), ylim=c(0.5, 2), xaxt = "n", col = plot.colors, pch = plot.symbols, ylab = expression(paste("Percentage error (%)", sep = "")), xlab = "", mgp=c(1.5,0.7,0), cex=symbol.size, cex.axis = 1.4, cex.lab = 1.6)
+par(mar = c(2, 4, 0.5, 1))
+plot(plot.positions, c(mean_Ta_brooder_percentage_error, mean_Tg_brooder_percentage_error, mean_Tr_percentage_error), xlim = c(0.9,3.1), ylim=c(0.5, 2), xaxt = "n", col = plot.colors, pch = plot.symbols, ylab = expression(paste("Percentage error (%)", sep = "")), xlab = "", mgp=c(1.5,0.4,0), cex=symbol.size, cex.axis = 1.4, cex.lab = 1.6)
 
 # grid lines
 abline(h = 0.5, untf = FALSE, lty = 3, col = "gray")

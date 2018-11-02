@@ -1,0 +1,714 @@
+---
+title: "estimated Values"
+author: "Hugo Milan"
+date: "October 22, 2018"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# ANABHT - ANAlytical solver for steady-state BioHeat Transfer problems in 1D
+# 
+# Copyright (C) 2018 by Cornell University. All Rights Reserved.
+# 
+# Written by Hugo Fernando Maia Milan.
+# 
+# Free for educational, research and non-profit purposes.
+# Refer to the license file for details.
+#
+# 
+# File:   sensitivity_analysis.rmd
+# Author: Hugo Fernando Maia Milan
+# Email:  hugofernando@gmail.com
+#
+# Created on October 22, 2018.
+#
+#
+# Function description:
+# Performs senstivity analysis of the paraters optimized using Monte Carlo into MSE
+#
+
+setwd("/home/public/OneDrive/Cornell/Publications/2018/Piglets 2013/code/V05/")
+library(rmatio) #read.mat
+```
+
+```{r}
+# reading training data
+sensitivityData = data.frame(MSE = rep(NA, 10002),              # mean squared error
+                             NMuscleLayers = rep(NA, 10002),    # number of muscle layers
+                             NFatLayers = rep(NA, 10002),       # number of fat layers
+                             NSkinLayers = rep(NA, 10002),      # number of skin layers
+                             NHairCoatLayers = rep(NA, 10002),  # number of hair-coat layers
+                             Lm = rep(NA, 10002),               # length of muscle layer
+                             Lf = rep(NA, 10002),               # length of fat layer
+                             Ls = rep(NA, 10002),               # length of skin layer
+                             Lh = rep(NA, 10002),               # length of hair-coat layer
+                             N = rep(NA, 10002),                # #hairs/m2
+                             D = rep(NA, 10002),                # diameter of hairs
+                             HL = rep(NA, 10002),               # length of hairs
+                             kmMean = rep(NA, 10002),           # muscle layer mean conductivity
+                             kfMean = rep(NA, 10002),           # fat layer mean conductivity
+                             ksMean = rep(NA, 10002),           # skin layer mean conductivity
+                             khMean = rep(NA, 10002),           # hair-coat layer mean conductivity
+                             wbmMean = rep(NA, 10002),          # muscle layer mean blood perfusion
+                             wbfMean = rep(NA, 10002),          # fat layer mean blood perfusion
+                             wbsMean = rep(NA, 10002),          # skin layer mean blood perfusion
+                             cbMean = rep(NA, 10002),           # mean blood volumetric heat capacity
+                             Tb_mMean = rep(NA, 10002),         # mean blood multiplicative factor
+                             qmMean = rep(NA, 10002),           # muscle layer mean metabolic heat production
+                             qfMean = rep(NA, 10002),           # fat layer mean metabolic heat production
+                             qsMean = rep(NA, 10002),           # skin layer mean metabolic heat production
+                             epsilon = rep(NA, 10002),          # emissivity of the animal surface
+                             d = rep(NA, 10002),                # animal diameter
+                             epsilong = rep(NA, 10002),         # emissivity of the black globe
+                             TMR_m = rep(NA, 10002),            # multiplicative factor for mean radiant temperature
+                             h_m = rep(NA, 10002),              # multiplicative factor for h at the hair-coat surface
+                             h_m_skin = rep(NA, 10002),         # multiplicative factor for h at the skin surface
+                             omega = rep(NA, 10002),            # proportion of convection heat transfer at the hair-coat surface
+                             phi = rep(NA, 10002),              # additional proportion of convection heat transfer at the skin surface
+                             ua = rep(NA, 10002),               # air velocity
+                             Ta_pen_stderr = rep(NA, 10002),    # standard error multiply for including uncertainty into Ta_pen
+                             Ta_brooder_stderr = rep(NA, 10002),# standard error multiply for including uncertainty into Ta_brooder
+                             Tg_brooder_stderr = rep(NA, 10002),# standard error multiply for including uncertainty into Tg_brooder
+                             Tr_stderr = rep(NA, 10002))        # standard error multiply for including uncertainty into Tr
+
+for (set_i in 1:10002){
+  fileWithMSE = read.mat(paste0("setsData/KM/S",set_i-1,"dataTraining.mat")) # fileWithMSE$mean_errors[4] = MSE
+  fileWithInputs = read.mat(paste0("sets/S",set_i-1,".mat")) # has everything I'm looking for
+  sensitivityData$MSE[set_i] = fileWithMSE$mean_errors[4]
+  sensitivityData$NMuscleLayers[set_i] = fileWithInputs$NMuscleLayers
+  sensitivityData$NFatLayers[set_i] = fileWithInputs$NFatLayers
+  sensitivityData$NSkinLayers[set_i] = fileWithInputs$NSkinLayers
+  sensitivityData$NHairCoatLayers[set_i] = fileWithInputs$NHairCoatLayers
+  sensitivityData$Lm[set_i] = sum(fileWithInputs$L[1:fileWithInputs$NMuscleLayers])
+  sensitivityData$Lf[set_i] = sum(fileWithInputs$L[ (1 + fileWithInputs$NMuscleLayers ):
+                               (fileWithInputs$NMuscleLayers + fileWithInputs$NFatLayers)])
+  sensitivityData$Ls[set_i] = sum(fileWithInputs$L[ (1 + fileWithInputs$NMuscleLayers 
+                                                       + fileWithInputs$NFatLayers ):
+                               (fileWithInputs$NMuscleLayers + fileWithInputs$NFatLayers
+                              + fileWithInputs$NSkinLayers)])
+  sensitivityData$Lh[set_i] = sum(fileWithInputs$L[ (1 + fileWithInputs$NMuscleLayers 
+                                                       + fileWithInputs$NFatLayers 
+                                                       + fileWithInputs$NSkinLayers):
+                               (fileWithInputs$NMuscleLayers + fileWithInputs$NFatLayers
+                              + fileWithInputs$NSkinLayers   + fileWithInputs$NHairCoatLayers)])
+  sensitivityData$N[set_i] = fileWithInputs$N[1]
+  sensitivityData$D[set_i] = fileWithInputs$D[1]
+  sensitivityData$HL[set_i] = fileWithInputs$HL[1]
+  sensitivityData$kmMean[set_i] = mean(fileWithInputs$k[1:fileWithInputs$NMuscleLayers])
+  sensitivityData$kfMean[set_i] = mean(fileWithInputs$k[ (1 + fileWithInputs$NMuscleLayers ):
+                               (fileWithInputs$NMuscleLayers + fileWithInputs$NFatLayers)])
+  sensitivityData$ksMean[set_i] = mean(fileWithInputs$k[ (1 + fileWithInputs$NMuscleLayers 
+                                                       + fileWithInputs$NFatLayers ):
+                               (fileWithInputs$NMuscleLayers + fileWithInputs$NFatLayers
+                              + fileWithInputs$NSkinLayers)])
+  sensitivityData$khMean[set_i] = mean(fileWithInputs$kh)
+  sensitivityData$wbmMean[set_i] = mean(fileWithInputs$w[1:fileWithInputs$NMuscleLayers])
+  sensitivityData$wbfMean[set_i] = mean(fileWithInputs$w[ (1 + fileWithInputs$NMuscleLayers ):
+                               (fileWithInputs$NMuscleLayers + fileWithInputs$NFatLayers)])
+  sensitivityData$wbsMean[set_i] = mean(fileWithInputs$w[ (1 + fileWithInputs$NMuscleLayers 
+                                                       + fileWithInputs$NFatLayers ):
+                               (fileWithInputs$NMuscleLayers + fileWithInputs$NFatLayers
+                              + fileWithInputs$NSkinLayers)])
+  sensitivityData$cbMean[set_i] = mean(fileWithInputs$cb[ 1:
+                               (fileWithInputs$NMuscleLayers + fileWithInputs$NFatLayers
+                              + fileWithInputs$NSkinLayers)])
+  sensitivityData$Tb_mMean[set_i] = mean(fileWithInputs$Tb_m[ 1:
+                               (fileWithInputs$NMuscleLayers + fileWithInputs$NFatLayers
+                              + fileWithInputs$NSkinLayers)])
+  sensitivityData$qmMean[set_i] = mean(fileWithInputs$qtotal[1:fileWithInputs$NMuscleLayers])
+  sensitivityData$qfMean[set_i] = mean(fileWithInputs$qtotal[ (1 + fileWithInputs$NMuscleLayers ):
+                               (fileWithInputs$NMuscleLayers + fileWithInputs$NFatLayers)])
+  sensitivityData$qsMean[set_i] = mean(fileWithInputs$qtotal[ (1 + fileWithInputs$NMuscleLayers 
+                                                       + fileWithInputs$NFatLayers ):
+                               (fileWithInputs$NMuscleLayers + fileWithInputs$NFatLayers
+                              + fileWithInputs$NSkinLayers)])
+  sensitivityData$epsilon[set_i] = fileWithInputs$epsilon
+  sensitivityData$d[set_i] = fileWithInputs$d
+  sensitivityData$epsilong[set_i] = fileWithInputs$epsilong
+  sensitivityData$TMR_m[set_i] = fileWithInputs$TMR_m
+  sensitivityData$h_m[set_i] = fileWithInputs$h_m
+  sensitivityData$h_m_skin[set_i] = fileWithInputs$h_m_skin
+  sensitivityData$omega[set_i] = fileWithInputs$omega
+  sensitivityData$phi[set_i] = fileWithInputs$phi
+  sensitivityData$ua[set_i] = fileWithInputs$ua
+  sensitivityData$Ta_pen_stderr[set_i] = fileWithInputs$Ta_pen_stderr
+  sensitivityData$Ta_brooder_stderr[set_i] = fileWithInputs$Ta_brooder_stderr
+  sensitivityData$Tg_brooder_stderr[set_i] = fileWithInputs$Tg_brooder_stderr
+  sensitivityData$Tr_stderr[set_i] = fileWithInputs$Tr_stderr
+}
+
+# modifications for set_i 1 and 2 (0 and 1 in octave)
+sensitivityData$ua[1:2] = fileWithInputs$ua
+sensitivityData$Ta_pen_stderr[1:2] = fileWithInputs$Ta_pen_stderr
+sensitivityData$Ta_brooder_stderr[1:2] = fileWithInputs$Ta_brooder_stderr
+sensitivityData$Tg_brooder_stderr[1:2] = fileWithInputs$Tg_brooder_stderr
+sensitivityData$Tr_stderr[1:2] = fileWithInputs$Tr_stderr
+```
+
+
+
+```{r}
+forward_selection_minimizing_cross_validation_error_metric <- function(training.dataset,
+                                                              testing.dataset,
+                                                              column.position.of.predicted.variable, 
+                                                              column.positions.of.predictor.variables, 
+                                                              number.of.cross.validations = 5,
+                                                              fitting.method = "LM", # possible values are: "LM", "GAM"
+                                                              error.metric = "MSE", #possible values are: "MSE", "AIC", "p-value", "deviance"
+                                                              minimax = FALSE, # if true, minimizes the maximum error metric
+                                                              backward.selection = FALSE, # if true, it performs backwards selection after each forward selection step (no matter if a new term was selected durin the forward selection step)
+                                                              p.value.threshold = 0.01, # p-value threshold to consider when using p-value error metric
+                                                              deviance.threshold = 0.9, # maximum percentage of deviance to be explained by the model
+                                                              print.partial.information = FALSE,
+                                                              method.gam = "GCV.Cp",
+                                                              select.gam = FALSE){
+  # verifying if the inputs are correct
+  if (fitting.method != "LM" && fitting.method != "GAM"){
+    print(paste("Error: Possible fitting methods are 'LM' and 'GAM' but the input was:", fitting.method))
+    return()
+  }
+  
+  if(error.metric != "MSE" && error.metric != "AIC" && error.metric != "p-value" && error.metric != "deviance"){
+    print(paste("Error: Possible error metrics are 'MSE', 'AIC', 'p-value', 'deviance' but the input was:", error.metric))
+    return()
+  }
+  
+  if (fitting.method == "GAM"){
+      library(mgcv)
+  }
+  
+  start.time = Sys.time() # measuring how long it takes to run it
+  CV.training.dataset = NA
+  
+  CV.training.dataset.size = NA
+  CV.testing.dataset = NA
+  CV.testing.dataset.size = NA
+  CV.model.old = NA
+  CV.model.new = NA
+  
+  MSE_CV_proposed = rep(NA, length.out = number.of.cross.validations) # cross-validation MSE of the proposed foward selection
+  MSE_CV_old = Inf # initiating with NA
+  MSE_CV_all_history = list(MSE_CV_proposed)
+  MSE_CV_history = NA # initiating with NA
+  
+  AIC_CV_proposed = rep(NA, length.out = number.of.cross.validations) # cross-validation AIC of the proposed foward selection
+  AIC_CV_old = Inf # initiating with NA
+  AIC_CV_all_history = list(AIC_CV_proposed)
+  AIC_CV_history = NA # initiating with NA
+  
+  p.value_CV_proposed = rep(NA, length.out = number.of.cross.validations) # cross-validation p-value of the proposed foward selection
+  p.value_CV_all_history = list(p.value_CV_proposed)
+  p.value_CV_history = NA # initiating with NA
+  
+  deviance_CV_proposed = rep(0, length.out = number.of.cross.validations) # cross-validation deviance of the proposed foward selection
+  deviance_CV_all_history = list(deviance_CV_proposed)
+  deviance_CV_history = 0 # initiating with 0, no deviance explained
+  
+  for (CV in 1:number.of.cross.validations){
+    CV.training.dataset[CV] = list(training.dataset[ -seq(CV, nrow(training.dataset), by = number.of.cross.validations) ,])
+    CV.training.dataset.size[CV] = nrow(CV.training.dataset[[CV]])
+    CV.testing.dataset[CV] = list(training.dataset[ seq(CV, nrow(training.dataset), by = number.of.cross.validations) ,])
+    CV.testing.dataset.size[CV] = nrow(CV.testing.dataset[[CV]])
+    
+    if (fitting.method == "LM"){
+      CV.model.old[CV] = list(lm(as.formula(paste0(names(training.dataset)[column.position.of.predicted.variable],
+                                                   " ~ 1")), data = CV.training.dataset[[CV]]))
+    } else if (fitting.method == "GAM"){
+      CV.model.old[CV] = list(gam(as.formula(paste0(names(training.dataset)[column.position.of.predicted.variable],
+                                                    " ~ 1")), data = CV.training.dataset[[CV]],
+                                  method = method.gam, select = select.gam))
+      # saving deviance
+      deviance_CV_proposed = CV.model.old[[CV]]$null.deviance
+    }
+    # saving deviance
+    deviance_CV_all_history = list(deviance_CV_proposed)
+    
+    # obtaining initial error metrics
+    MSE_CV_all_history[[1]][CV] = mean( (predict(CV.model.old[[CV]], CV.testing.dataset[[CV]]) - CV.testing.dataset[[CV]][,column.position.of.predicted.variable])^2 )
+    
+    # calculating cross-validation AIC
+    AIC_CV_all_history[[1]][CV] = extractAIC(CV.model.old[[CV]])[2]
+    
+    # calculating cross-validation p-values
+    p.value_CV_all_history[[1]][CV] = p.value.threshold
+  }
+  # cross-validation combination method
+  if (minimax){
+    MSE_CV_history[1] = max(MSE_CV_all_history[[1]])
+    AIC_CV_history[1] = max(AIC_CV_all_history[[1]])
+    p.value_CV_history[1] = max(p.value_CV_all_history[[1]])
+  } else {
+    # mean MSE
+    MSE_CV_history[1] = sum(MSE_CV_all_history[[1]]*CV.testing.dataset.size)/nrow(training.dataset)
+    # weighted by the size of the training dataset
+    AIC_CV_history[1] = sum(AIC_CV_all_history[[1]]*CV.training.dataset.size)/sum(CV.training.dataset.size)
+    # weighted by the size of the training dataset
+    p.value_CV_history[1] = sum(p.value_CV_all_history[[1]]*CV.training.dataset.size)/sum(CV.training.dataset.size)
+  }
+  
+  iteration = 1
+  formula.history = CV.model.old[[1]]$call[2]
+  number.of.terms.history = 0
+  
+  one.term.formulas = names(training.dataset)[column.positions.of.predictor.variables]
+  current.term = list(NA) # list containing the position of the predictors in the list one.term.formulas. Note that an interaction term would be a list inside current.term (e.g., list(1, 2))
+  number.of.terms = 0 # number of terms in current.term list
+  
+  MSE_CV_old = MSE_CV_history[1]
+  AIC_CV_old = AIC_CV_history[1]
+  deviance_CV_old = deviance_CV_history[1]
+  # starting the loop that adds one predictor at a time
+  while (TRUE){
+    best.proposed.MSE = MSE_CV_old
+    best.proposed.AIC = AIC_CV_old
+    p.value.old = p.value.threshold
+    best.proposed.p.value = p.value.old
+    best.proposed.deviance = deviance_CV_old
+    
+    best.new.formula = NA
+    term.in.formula.vector = 1 # term we are testing to add in the forward selection procedure
+    number.of.interaction.terms.under.consideration = 2
+    number.of.matches.found = 0
+    previous.term.under.consideration.for.interactions = 0
+    next.term.under.consideration.for.interactions = 0
+    level.being.evaluated = 1
+    term_i = 1 # iterator variable
+    term_i_old = NA # used for interactions
+    
+    # calculating the maximum number of possible interactions
+    if (number.of.terms > 1){
+      for (i in 1:number.of.terms){
+        if (length(current.term[[i]]) > maximum.number.of.interactions){
+          maximum.number.of.interactions = length(current.term[[i]]) # this is the term with more interactions
+        }
+      }
+    } else {
+      maximum.number.of.interactions = 0
+    }
+    # now we add one to the possible number of interactions because, if the term with maximum length has, e.g., two terms in itself,
+    # then we can have at most a 3-way interaction
+    maximum.number.of.possible.interactions = maximum.number.of.interactions + 1
+    
+    running.backward.selection = FALSE
+    maximum.number.of.interactions = maximum.number.of.possible.interactions - 1
+    number.of.interaction.terms.under.consideration.for.backward.selection = 1
+    previous.term.under.consideration.for.backward.selection = 0
+    while(TRUE){
+      
+      # set a flag to run updates. We will not run in case we detect that we are running for something
+      # that was already run
+      run.update = TRUE
+      
+      # if the current term we are testing is bigger than the number of predictors,
+      # we start looking for terms that have interactions
+      if (!running.backward.selection && term.in.formula.vector > length(one.term.formulas)){
+        # finding what is the maximum number of interactions we can have with the current current.term
+        if (number.of.terms < 2){
+          running.backward.selection = TRUE
+          next
+        }
+        # looking for interactions
+        if (all(is.na(term_i_old[[level.being.evaluated]]))){
+          if ( (previous.term.under.consideration.for.interactions + 1) < number.of.terms){
+            for (i in (previous.term.under.consideration.for.interactions + 1):number.of.terms){
+              if (length(current.term[[i]]) == number.of.interaction.terms.under.consideration - 1){
+                term_i = current.term[[i]]
+                break
+              }
+            }
+            previous.term.under.consideration.for.interactions = i
+            next.term.under.consideration.for.interactions[level.being.evaluated] = previous.term.under.consideration.for.interactions + 1
+            term_i_old[level.being.evaluated] = list(term_i) # saving the current status of term_i
+          }
+        } else {
+          term_i = term_i_old[[level.being.evaluated]] # restoring what we had
+        }
+        
+        # looking for other terms that could be used to test interactions
+        if (next.term.under.consideration.for.interactions[level.being.evaluated] <= number.of.terms){
+          for (j in next.term.under.consideration.for.interactions[level.being.evaluated]:number.of.terms){
+            if (length(current.term[[j]]) == number.of.interaction.terms.under.consideration - 1){
+              for (i in 1:length(current.term[[j]])){
+                term_i[[length(term_i) + 1]] <- as.numeric(current.term[[j]][i])
+              }
+              number.of.matches.found = number.of.matches.found + 1
+              term_i_old[number.of.matches.found + 1] = list(term_i)
+              next.term.under.consideration.for.interactions[number.of.matches.found] = j + 1
+              if (number.of.matches.found >= number.of.interaction.terms.under.consideration - 1){
+                level.being.evaluated = number.of.matches.found
+                break
+              }
+            }
+          }
+        }
+        term_i = sort(unique(term_i))
+        
+        # if the sizes don't match, we don't run the update
+        if (length(term_i) != number.of.interaction.terms.under.consideration ||
+            number.of.matches.found < number.of.interaction.terms.under.consideration - 1) {
+          run.update = FALSE
+        }
+        
+        # determining if we should break the loop or move to another level of interactions
+        if ( previous.term.under.consideration.for.interactions >= number.of.terms ||
+             all(is.na(term_i_old[[1]]))){
+          if (number.of.interaction.terms.under.consideration < maximum.number.of.possible.interactions){
+            number.of.interaction.terms.under.consideration = number.of.interaction.terms.under.consideration + 1
+            previous.term.under.consideration.for.interactions = 1 # resetting
+            level.being.evaluated = 1
+            term_i_old[[level.being.evaluated]] = NA
+          } else {
+           # after we tested if we should add interaction, we set the flag that tells we should look for backward selection
+            run.update = TRUE # resetting the running flag
+            running.backward.selection = TRUE
+          }
+        }
+        
+        # determining if we should move to another previous.term.under.consideration.for.interactions
+        # if so, we set term_i_old equals to NA
+        if (number.of.matches.found == 0 || next.term.under.consideration.for.interactions[level.being.evaluated] > number.of.terms){
+          term_i_old[[level.being.evaluated]] = NA
+        }
+        # resetting
+        if (next.term.under.consideration.for.interactions[level.being.evaluated] > number.of.terms
+            || number.of.matches.found != level.being.evaluated){
+          level.being.evaluated = level.being.evaluated - 1
+          number.of.matches.found = number.of.matches.found - 1
+          if (level.being.evaluated <= 0){
+            level.being.evaluated = 1
+          }
+        }
+        number.of.matches.found = number.of.matches.found - 1
+        if (number.of.matches.found <= 0){
+          number.of.matches.found = 0
+        }
+      }
+      
+      
+      
+      # if we are not running backward selection and if we got the flag to run backward selection.
+      # that means we should break
+      if (!backward.selection && running.backward.selection){
+        break
+      } else if (backward.selection && running.backward.selection){
+        # if we are running backward selection and the running backward selection is on, then we set up the code for backward selection
+        
+        # if we don't have any terms, we just break it
+        if (number.of.terms < 1){
+          break
+        }
+        
+        # looking for the next number of terms
+        if (previous.term.under.consideration.for.backward.selection + 1 > number.of.terms){
+          if (number.of.interaction.terms.under.consideration.for.backward.selection < maximum.number.of.interactions){
+            number.of.interaction.terms.under.consideration.for.backward.selection = 1 + number.of.interaction.terms.under.consideration.for.backward.selection
+            previous.term.under.consideration.for.backward.selection = 0 # reset
+          } else {
+            break
+          }
+        }
+        found.something = FALSE
+        for (i in (previous.term.under.consideration.for.backward.selection + 1):number.of.terms){
+          if (length(current.term[[i]]) == number.of.interaction.terms.under.consideration.for.backward.selection){
+            term_i = current.term[[i]]
+            found.something = TRUE
+            break
+          }
+        }
+        
+        previous.term.under.consideration.for.backward.selection = i
+        
+        # if we didn't find anything, we go to the next loop
+        if (!found.something){
+          next
+        }
+        
+        # now we look if term_i is not an interaction 
+        for (j in 1:number.of.terms){
+          # skip if this is the current term
+          if (j == i){
+            next
+          }
+          if ( length(term_i) <  length(current.term[[j]])
+               && any(term_i %in% current.term[[j]])) {
+            run.update = FALSE
+            break # break, we found it somewhere else, so this term belongs to an interaction
+          }
+        }
+      }
+      
+      
+      
+      
+      # not executing terms that are already in the list of terms
+      if (list(sort(term_i)) %in% current.term && !running.backward.selection){
+        run.update = FALSE
+      }
+      
+      # we are not going to run this update, so we skip it
+      if (!run.update){
+        # if we are not doing interactions, then we move to the next term
+        term.in.formula.vector = term.in.formula.vector + 1
+        term_i = term.in.formula.vector
+        next
+      }
+      
+      if (running.backward.selection){
+        signal.new.terms = "-"
+      } else {
+        signal.new.terms = "+"
+      }
+      
+      if (fitting.method == "LM"){
+        # writing the formula with interactions  
+        if (length(term_i) > 1){
+          new.term = paste0(". ~ . ", signal.new.terms, one.term.formulas[term_i[1]] )
+          for (i in 2:length(term_i)){
+            new.term = paste0( new.term, ":", one.term.formulas[term_i[i]])
+          }
+          new.term = as.formula(new.term)
+        } else {
+          # starting with the first formula
+          new.term = as.formula(paste0(". ~ . ", signal.new.terms, one.term.formulas[term_i[1]]) )
+        }
+      } else if (fitting.method == "GAM") {
+        if (length(term_i) > 1){
+          new.term = paste0(". ~ . ", signal.new.terms, " ti(", one.term.formulas[term_i[1]] )
+          for (i in 2:length(term_i)){
+            new.term = paste0( new.term, ", ", one.term.formulas[term_i[i]])
+          }
+          new.term = as.formula(paste0(new.term, ")") )
+        } else {
+          # starting with the first formula
+          new.term = as.formula(paste0(". ~ . ", signal.new.terms, " s(", one.term.formulas[term_i[1]], ')') )
+        }
+      }
+      # retraining the models with the new formula and calculating cross-validation MSE
+      tryCatch({
+        for (CV in 1:number.of.cross.validations){
+          CV.model.new[CV] = list(update(CV.model.old[[CV]], new.term ))
+          # calculating cross-validation MSE
+          MSE_CV_proposed[CV] = mean( (predict(CV.model.new[[CV]], CV.testing.dataset[[CV]]) - CV.testing.dataset[[CV]][,column.position.of.predicted.variable])^2 )
+          
+          # calculating cross-validation AIC
+          AIC_CV_proposed[CV] = extractAIC(CV.model.new[[CV]])[2]
+          
+          # calculating cross-validation p-values
+          p.value_CV_proposed[CV] = anova(CV.model.old[[CV]], CV.model.new[[CV]], test = 'F')[[6]][2]
+          if ( is.na(p.value_CV_proposed[CV])){
+            p.value_CV_proposed[CV] = 1
+          }
+          
+          # getting amount of explained deviance
+          if (fitting.method == "GAM") {
+            deviance_CV_proposed[CV] = 1 - CV.model.new[[CV]]$deviance/CV.model.new[[CV]]$null.deviance
+          }
+            
+        }
+      }, error = function(e) {
+        print(paste("Found an error:", e))
+        MSE_CV_proposed[1] = +Inf
+        AIC_CV_proposed[1] = +Inf
+        p.value_CV_proposed[1] = +Inf
+      })
+      
+      # cross-validation combination method
+      if (minimax){
+        proposed.MSE = max(MSE_CV_proposed)
+        proposed.AIC = max(AIC_CV_proposed)
+        # if we are running backward selection, we want to get the minimum p-value
+        if (running.backward.selection){
+          proposed.p.value = min(p.value_CV_proposed)
+        } else {
+           proposed.p.value = max(p.value_CV_proposed)
+        }
+        
+        proposed.deviance = max(deviance_CV_proposed)
+      } else {
+        # mean MSE
+        proposed.MSE = sum(MSE_CV_proposed*CV.testing.dataset.size)/nrow(training.dataset)
+        # weighted by the size of the training dataset
+        proposed.AIC = sum(AIC_CV_proposed*CV.training.dataset.size)/sum(CV.training.dataset.size)
+        # weighted by the size of the training dataset
+        proposed.p.value = sum(p.value_CV_proposed*CV.training.dataset.size)/sum(CV.training.dataset.size)
+        # weighted by the size of the training dataset
+        proposed.deviance = sum(deviance_CV_proposed*CV.training.dataset.size)/sum(CV.training.dataset.size)
+      }
+      # printing where we are
+      if (print.partial.information){
+        print(paste0(iteration, "(",number.of.terms, "): Current best MSE (", format(best.proposed.MSE, nsmall = 2),
+                     "), AIC (", format(best.proposed.AIC, nsmall = 2),
+                     "), p-value (", format(best.proposed.p.value, nsmall = 2),
+                     "), D (", format(best.proposed.deviance, nsmall = 2),
+                     "); Term ", signal.new.terms, " ", deparse(term_i[]),
+                     " : MSE (", format(proposed.MSE, nsmall = 2),
+                     "), AIC (", format(proposed.AIC, nsmall = 2),
+                     "), p-value (", format(proposed.p.value, nsmall = 2),
+                     "), D (", format(proposed.deviance, nsmall = 2),
+                     "); ", CV.model.new[[1]]$call[2]))
+      }
+      
+      # testing if we should save current proposed model or just go to the next loop iteration
+      # if our cross-validation MSE is better than we we had before, we save it
+      update.proposed.term = TRUE
+      if (error.metric == "MSE" && proposed.MSE > best.proposed.MSE){
+        update.proposed.term = FALSE
+      } else if (error.metric == "AIC" && proposed.AIC > best.proposed.AIC){
+        update.proposed.term = FALSE
+      } else if (error.metric == "deviance" && proposed.deviance < best.proposed.deviance){
+        update.proposed.term = FALSE
+      } else if (error.metric == "p-value" && !running.backward.selection && proposed.p.value > best.proposed.p.value){ # for forward selection, we don't update if the proposed p-value is greater than the best p-value
+        update.proposed.term = FALSE
+      } else if (error.metric == "p-value" && running.backward.selection && (best.proposed.p.value < p.value.threshold || proposed.p.value < p.value.threshold || best.proposed.p.value > proposed.p.value )){ # for backward selection, we don't update if the best proposed p-value so far is lower than the threshold (which would indicate we can add a new term), if the proposed p-value is lower than the p-value threshold, or if the proposed p-value is lower than our current best proposed p-value
+        update.proposed.term = FALSE
+      }
+      
+      if (update.proposed.term){
+        best.MSE_CV_proposed = MSE_CV_proposed
+        best.proposed.MSE = proposed.MSE
+        
+        best.AIC_CV_proposed = AIC_CV_proposed
+        best.proposed.AIC = proposed.AIC
+        
+        best.p.value_CV_proposed = p.value_CV_proposed
+        best.proposed.p.value = proposed.p.value
+        
+        best.deviance_CV_proposed = deviance_CV_proposed
+        best.proposed.deviance = proposed.deviance
+        
+        best.new.formula = new.term
+        proposed.term = term_i
+        best.step = 'forward'
+        if (running.backward.selection){
+          proposed.term.to.remove = previous.term.under.consideration.for.backward.selection
+          best.step = 'backward'
+        }
+      }
+      
+      # move to the next term
+      term.in.formula.vector = term.in.formula.vector + 1
+      term_i = term.in.formula.vector
+    }
+    
+    # now we check if we should update the terms
+      if (error.metric == "MSE" && best.proposed.MSE >= MSE_CV_old){
+        break # we didn't get any new better terms here
+      } else if (error.metric == "AIC" && best.proposed.AIC >= AIC_CV_old ){
+        break # we didn't get any new better terms here
+      } else if (error.metric == "deviance" && best.proposed.deviance <= deviance_CV_old ){
+        break # we didn't get any new better terms here
+      } else if (error.metric == "p-value" && best.step == "forward" && best.proposed.p.value >= p.value.threshold){ # for forward selection, we don't update if the proposed p-value is greater than the best p-value
+        break # we didn't get any new better terms here
+      } else if (error.metric == "p-value" && best.step == "backward" && best.proposed.p.value <= p.value.threshold){ # for backward selection, we don't update if the best proposed p-value so far is lower than the threshold (which would indicate we can add a new term), if the proposed p-value is lower than the p-value threshold, or if the proposed p-value is lower than our current best proposed p-value
+        break # we didn't get any new better terms here
+      }
+    
+    # updating the final models for this iteraction
+    for (CV in 1:number.of.cross.validations){
+      CV.model.old[CV] = list(update(CV.model.old[[CV]], best.new.formula ))
+    }
+    if (best.step == 'forward'){
+      current.term[number.of.terms + 1] = list(proposed.term)
+      number.of.terms = number.of.terms + 1
+    } else {
+      current.term = current.term[-proposed.term.to.remove]
+      number.of.terms = number.of.terms - 1
+    }
+    
+    iteration = iteration + 1
+    formula.history[iteration] = CV.model.old[[1]]$call[2]
+    number.of.terms.history[iteration] = number.of.terms
+    
+    # updating old MSE and AIC
+    MSE_CV_old = best.proposed.MSE
+    AIC_CV_old = best.proposed.AIC
+    deviance_CV_old = best.proposed.deviance
+    
+    # saving in our history variables
+    MSE_CV_all_history[iteration] = list(best.MSE_CV_proposed)
+    MSE_CV_history[iteration] = best.proposed.MSE
+    
+    AIC_CV_all_history[iteration] = list(best.AIC_CV_proposed)
+    AIC_CV_history[iteration] = best.proposed.AIC
+    
+    p.value_CV_all_history[iteration] = list(best.p.value_CV_proposed)
+    p.value_CV_history[iteration] = best.proposed.p.value
+    
+    deviance_CV_all_history[iteration] = list(best.deviance_CV_proposed)
+    deviance_CV_history[iteration] = best.proposed.deviance
+    
+    # if we have the amount of deviance we are looking for, we break
+    if (deviance_CV_old >= deviance.threshold){
+      break
+    }
+  }
+  
+  tryCatch({
+    final.model.on.training.dataset = update(CV.model.old[[1]], data = training.dataset)
+    MSE_training = mean( (predict(final.model.on.training.dataset, training.dataset) - training.dataset[,column.position.of.predicted.variable])^2 )
+    MSE_testing = mean( (predict(final.model.on.training.dataset, testing.dataset) - testing.dataset[,column.position.of.predicted.variable])^2 )
+  }, error = function(e) {
+    final.model.on.training.dataset = paste("Error when updating the model for the training dataset:", e)
+    MSE_training = NA
+    MSE_testing = NA
+    print(final.model.on.training.dataset)
+  })
+  
+  tryCatch({
+    final.model.on.all.dataset = update(CV.model.old[[1]], data = rbind(training.dataset, testing.dataset))
+  }, error = function(e) {
+    final.model.on.all.dataset = paste("Error when updating the model for the full dataset:", e)
+    print(final.model.on.all.dataset)
+  })
+  
+  #### Saving the models
+  MSEs = data.frame (MSE_training = MSE_training, MSE_CV = MSE_CV_history[number.of.terms + 1], MSE_testing = MSE_testing)
+  
+  run.time.in.seconds = difftime(Sys.time(), start.time, units = "sec")
+  
+  output.forward.selection = list(final.model.on.training.dataset = final.model.on.training.dataset, 
+                                  final.model.on.all.dataset = final.model.on.all.dataset, 
+                                  formula.history = formula.history,
+                                  number.of.terms.history = number.of.terms.history,
+                                  MSEs = MSEs, 
+                                  run.time.in.seconds = run.time.in.seconds,
+                                  MSE_CV_all_history = MSE_CV_all_history,
+                                  MSE_CV_history = MSE_CV_history,
+                                  AIC_CV_all_history = AIC_CV_all_history,
+                                  AIC_CV_history = AIC_CV_history,
+                                  p.value_CV_all_history = p.value_CV_all_history,
+                                  p.value_CV_history = p.value_CV_history)
+  
+  return (output.forward.selection)
+}
+
+sensitivityData_withoutNaN = na.omit(sensitivityData)
+GAM = forward_selection_minimizing_cross_validation_error_metric (sensitivityData_withoutNaN, NULL, 1, 2:37, fitting.method = "GAM", print.partial.information = T, error.metric = "deviance")
+GAM$MSEs
+save(GAM, file = "GAM_sensitivity_analysis.RData")
+
+# trying something else
+gam.mc = gam(as.formula(paste("MSE ~ s(", paste(names(sensitivityData_withoutNaN)[2:37], collapse = ") + s("), ")")), data = sensitivityData_withoutNaN, select = T, method = "REML")
+summary(gam.mc)
+
+## to much terms to estimate
+names_p = names(sensitivityData_withoutNaN)[2:37]
+formula.all = paste("MSE ~ s(", paste(names_p, collapse = ") + s("), ")")
+formula.all = paste("MSE ~ ")
+
+for (i in 1:35){
+  for (j in (i + 1):36){
+    formula.all = paste(formula.all, "+ ti(",paste(names_p[ c(i, j)], collapse = ","), ")")
+  }
+}
+gam.mc.2way = gam(as.formula(formula.all), data = sensitivityData_withoutNaN, select = T, method = "REML")
+summary(gam.mc.2way)
+
+```
+

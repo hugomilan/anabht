@@ -1,6 +1,6 @@
 Optimization,weightsCalculation,ensembleAgrupation,number_of_sets,avg_std_total_testing,avg_std2_total_testing,MSE_total_testing,avg_std2_plus_MSE_total_testing,log_likelihood_total_testing,MSE_total_CV,MSE_total_training,MSE_Ts_training,MSE_Ts_CV,MSE_Ts_testing,MSE_Th_training,MSE_Th_CV,MSE_Th_testing
 Expected_parameters_measured_environment,Set_0,NA,1,NA,NA,7.4951,NA,NA,NA,7.41083610545076,10.6866196886567,NA,10.3715937078147,4.13505252224477,NA,4.61870108648793
-Expected_parameters_expected_environment,Set_1,NA,1,NA,NA,7.796,NA,NA,NA,7.22346009878914,10.5178721825217,NA,10.6798331283191,3.92904801505656,NA,4.91226381064107
+Expected_parameters_expected_environment,Set_1,NA,1,NA,NA,8.165,NA,NA,NA,7.5858,10.8322,NA,10.9986,4.3395,NA,5.3315
 Best_parameters,Set_7651,NA,1,NA,NA,2.3707,NA,NA,NA,2.2018518084384,2.42130641034541,NA,2.03117802139207,1.98239720653139,NA,2.71019236539532
 minMSE,bagging,naive,4,0.1956,0.0383,2.3518,2.3901,2662.1205,2.18099053033191,2.18099053033191,NA,NA,2.1042,NA,NA,2.5994
 maxLL,bagging,naive,1000,0.3889,0.1512,2.6917,2.8429,611.2503,2.51281863866392,2.50725018171908,NA,NA,2.3917,NA,NA,2.9917

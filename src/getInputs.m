@@ -165,11 +165,11 @@ ua = 0.5;
 % Standard error multiply for the predicted temperatures. This values multiply
 % the standard error of the predictions or the uncertainty of the measurement
 % Standard error multiply for the air temperature measured in the pen
-Ta_pen_stderr = normrnd(0, 1);
+Ta_pen_stderr = 0;
 % Standard error multiply for the predicted air temperature inside the brooder
-Ta_brooder_stderr = normrnd(0, 1);
+Ta_brooder_stderr = 0;
 % Standard error multiply for the predicted black globe temperature inside the brooder
-Tg_brooder_stderr = normrnd(0, 1);
+Tg_brooder_stderr = 0;
 % Standard error multiply for the predicted rectal temperature
-Tr_stderr = normrnd(0, 1);
+Tr_stderr = 0;
 end

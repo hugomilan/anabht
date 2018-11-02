@@ -416,10 +416,13 @@ Ta_brooder_plot = seq(0, 40, 0.1)
 
 predictionsEnsemble_brooder_matrix = matrix(ensemble_best_Ta_brooder$predictionsEnsemble, ncol = 13)
 # estimated Ts
+Ts_min = min(predictionsEnsemble_brooder_matrix[,1] - quantile*predictionsEnsemble_brooder_matrix[,11])
+Ts_max = max(predictionsEnsemble_brooder_matrix[,1] + quantile*predictionsEnsemble_brooder_matrix[,11])
 image2D(matrix(predictionsEnsemble_brooder_matrix[,1], length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
         colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
         xlab = "Supplemental heat (W)", 
         ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        zlim= c(Ts_min, Ts_max),
         mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
 rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
 
@@ -428,6 +431,7 @@ image2D(matrix(predictionsEnsemble_brooder_matrix[,1] + quantile*predictionsEnse
         colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
         xlab = "Supplemental heat (W)", 
         ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        zlim= c(Ts_min, Ts_max),
         mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
 rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
 
@@ -436,6 +440,7 @@ image2D(matrix(predictionsEnsemble_brooder_matrix[,1] - quantile*predictionsEnse
         colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
         xlab = "Supplemental heat (W)", 
         ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        zlim= c(Ts_min, Ts_max),
         mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
 rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
 
@@ -443,10 +448,13 @@ rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd 
 
 
 # estimated qs
+qs_min = min(predictionsEnsemble_brooder_matrix[,2] - quantile*predictionsEnsemble_brooder_matrix[,12])
+qs_max = max(predictionsEnsemble_brooder_matrix[,2] + quantile*predictionsEnsemble_brooder_matrix[,12])
 image2D(matrix(predictionsEnsemble_brooder_matrix[,2], length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
         colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
         xlab = "Supplemental heat (W)", 
         ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        zlim= c(qs_min, qs_max),
         mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
 rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
 
@@ -455,6 +463,7 @@ image2D(matrix(predictionsEnsemble_brooder_matrix[,2] + quantile*predictionsEnse
         colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
         xlab = "Supplemental heat (W)", 
         ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        zlim= c(qs_min, qs_max),
         mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
 rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
 
@@ -463,6 +472,7 @@ image2D(matrix(predictionsEnsemble_brooder_matrix[,2] - quantile*predictionsEnse
         colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
         xlab = "Supplemental heat (W)", 
         ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        zlim= c(qs_min, qs_max),
         mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
 rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
 
@@ -470,10 +480,13 @@ rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd 
 
 
 # estimated Th
+Th_min = min(predictionsEnsemble_brooder_matrix[,3] - quantile*predictionsEnsemble_brooder_matrix[,13])
+Th_max = max(predictionsEnsemble_brooder_matrix[,3] + quantile*predictionsEnsemble_brooder_matrix[,13])
 image2D(matrix(predictionsEnsemble_brooder_matrix[,3], length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
         colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
         xlab = "Supplemental heat (W)", 
         ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        zlim= c(Th_min, Th_max),
         mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
 rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
 
@@ -482,6 +495,7 @@ image2D(matrix(predictionsEnsemble_brooder_matrix[,3] + quantile*predictionsEnse
         colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
         xlab = "Supplemental heat (W)", 
         ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        zlim= c(Th_min, Th_max),
         mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
 rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
 
@@ -490,6 +504,7 @@ image2D(matrix(predictionsEnsemble_brooder_matrix[,3] - quantile*predictionsEnse
         colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
         xlab = "Supplemental heat (W)", 
         ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        zlim= c(Th_min, Th_max),
         mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
 rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
 
@@ -634,7 +649,7 @@ rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd 
 
 
 ```{r}
-# ploting heat flux and surface temperatures for a given brooder air temperature and supplementa heat
+# ploting heat flux and surface temperatures for a given brooder air temperature and supplemental heat
 ensemble_best_Ta_brooderAddedInc = read.mat("../../ensembleData/KM/bestEnsembleSurfaceBrooderAddedInc_0_1000_0_40.mat")
 Ta_brooder_min = 17.77
 Ta_brooder_max = 33.61
@@ -647,10 +662,13 @@ Ta_brooder_plot = seq(0, 40, 0.1) # update step to 0.1
 
 predictionsEnsemble_brooderAddedInc_matrix = matrix(ensemble_best_Ta_brooderAddedInc$predictionsEnsemble, ncol = 13)
 # estimated Ts
+Ts_min = min(predictionsEnsemble_brooderAddedInc_matrix[,1] - quantile*predictionsEnsemble_brooderAddedInc_matrix[,11])
+Ts_max = max(predictionsEnsemble_brooderAddedInc_matrix[,1] + quantile*predictionsEnsemble_brooderAddedInc_matrix[,11])
 image2D(matrix(predictionsEnsemble_brooderAddedInc_matrix[,1], length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
         colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
         xlab = "Supplemental heat (W)", 
         ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        zlim= c(Ts_min, Ts_max),
         mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
 rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
 
@@ -659,6 +677,7 @@ image2D(matrix(predictionsEnsemble_brooderAddedInc_matrix[,1] + quantile*predict
         colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
         xlab = "Supplemental heat (W)", 
         ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        zlim= c(Ts_min, Ts_max),
         mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
 rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
 
@@ -667,6 +686,7 @@ image2D(matrix(predictionsEnsemble_brooderAddedInc_matrix[,1] - quantile*predict
         colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
         xlab = "Supplemental heat (W)", 
         ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        zlim= c(Ts_min, Ts_max),
         mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
 rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
 
@@ -674,10 +694,13 @@ rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd 
 
 
 # estimated qs
+qs_min = min(predictionsEnsemble_brooderAddedInc_matrix[,2] - quantile*predictionsEnsemble_brooderAddedInc_matrix[,12])
+qs_max = max(predictionsEnsemble_brooderAddedInc_matrix[,2] + quantile*predictionsEnsemble_brooderAddedInc_matrix[,12])
 image2D(matrix(predictionsEnsemble_brooderAddedInc_matrix[,2], length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
         colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
         xlab = "Supplemental heat (W)", 
         ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        zlim= c(qs_min, qs_max),
         mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
 rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
 
@@ -686,6 +709,7 @@ image2D(matrix(predictionsEnsemble_brooderAddedInc_matrix[,2] + quantile*predict
         colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
         xlab = "Supplemental heat (W)", 
         ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        zlim= c(qs_min, qs_max),
         mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
 rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
 
@@ -694,6 +718,7 @@ image2D(matrix(predictionsEnsemble_brooderAddedInc_matrix[,2] - quantile*predict
         colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
         xlab = "Supplemental heat (W)", 
         ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        zlim= c(qs_min, qs_max),
         mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
 rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
 
@@ -701,10 +726,13 @@ rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd 
 
 
 # estimated Th
+Th_min = min(predictionsEnsemble_brooderAddedInc_matrix[,3] - quantile*predictionsEnsemble_brooderAddedInc_matrix[,13])
+Th_max = max(predictionsEnsemble_brooderAddedInc_matrix[,3] + quantile*predictionsEnsemble_brooderAddedInc_matrix[,13])
 image2D(matrix(predictionsEnsemble_brooderAddedInc_matrix[,3], length(heat_supp_plot), byrow = T), contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
         colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
         xlab = "Supplemental heat (W)", 
         ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        zlim= c(Th_min, Th_max),
         mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
 rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
 
@@ -713,6 +741,7 @@ image2D(matrix(predictionsEnsemble_brooderAddedInc_matrix[,3] + quantile*predict
         colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
         xlab = "Supplemental heat (W)", 
         ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        zlim= c(Th_min, Th_max),
         mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
 rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
 
@@ -721,6 +750,7 @@ image2D(matrix(predictionsEnsemble_brooderAddedInc_matrix[,3] - quantile*predict
         colkey = FALSE, x = heat_supp_plot, y = Ta_brooder_plot, 
         xlab = "Supplemental heat (W)", 
         ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        zlim= c(Th_min, Th_max),
         mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6)
 rect(heat_supp_min, Ta_brooder_min, heat_supp_max, Ta_brooder_max, lty = 2, lwd = 3)
 
@@ -1117,19 +1147,25 @@ supplemental_heat_Ta_brooderAddedInc$min_val_upper_neg_abs_filt[supplemental_hea
 
 
 # lower CI
+Hopt_min = min(supplemental_heat_Ta_brooderAddedInc$min_power_lower_real)
+Hopt_max = max(supplemental_heat_Ta_brooderAddedInc$min_power_upper_real)
 image2D(supplemental_heat_Ta_brooderAddedInc$min_power_lower_real, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
         colkey = FALSE, x = supplemental_heat_Ta_brooderAddedInc$weights, y = supplemental_heat_Ta_brooderAddedInc$Ta_pen_surface_initial, 
         xlab = "Weight (kg)", 
         ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        zlim = c(Hopt_min, Hopt_max),
         mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6, xaxt = "n")
 axis(1, c(1, 5, 10, 15, 20), cex.axis = 1.4, mgp=c(2.3,0.7,0))
 rect(weight_min, Ta_brooder_min, weight_max, Ta_brooder_max, lty = 2, lwd = 3)
 
 # lower CI
+Eimb_min = min(supplemental_heat_Ta_brooderAddedInc$min_val_lower_neg_abs_filt)
+Eimb_max = max(supplemental_heat_Ta_brooderAddedInc$min_val_upper_neg_abs_filt)
 image2D(supplemental_heat_Ta_brooderAddedInc$min_val_lower_neg_abs_filt, contour = list( labcex = 1.6, lwd = 4, vfont = c("sans serif", "bold italic")), 
         colkey = FALSE, x = supplemental_heat_Ta_brooderAddedInc$weights, y = supplemental_heat_Ta_brooderAddedInc$Ta_pen_surface_initial, 
         xlab = "Weight (kg)", 
         ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        zlim = c(Eimb_min, Eimb_max),
         mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6, xaxt = "n")
 axis(1, c(1, 5, 10, 15, 20), cex.axis = 1.4, mgp=c(2.3,0.7,0))
 rect(weight_min, Ta_brooder_min, weight_max, Ta_brooder_max, lty = 2, lwd = 3)
@@ -1141,6 +1177,7 @@ image2D(supplemental_heat_Ta_brooderAddedInc$min_power_mean_real, contour = list
         colkey = FALSE, x = supplemental_heat_Ta_brooderAddedInc$weights, y = supplemental_heat_Ta_brooderAddedInc$Ta_pen_surface_initial, 
         xlab = "Weight (kg)", 
         ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        zlim = c(Hopt_min, Hopt_max),
         mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6, xaxt = "n")
 axis(1, c(1, 5, 10, 15, 20), cex.axis = 1.4, mgp=c(2.3,0.7,0))
 rect(weight_min, Ta_brooder_min, weight_max, Ta_brooder_max, lty = 2, lwd = 3)
@@ -1150,6 +1187,7 @@ image2D(supplemental_heat_Ta_brooderAddedInc$min_val_mean_neg_abs_filt, contour 
         colkey = FALSE, x = supplemental_heat_Ta_brooderAddedInc$weights, y = supplemental_heat_Ta_brooderAddedInc$Ta_pen_surface_initial, 
         xlab = "Weight (kg)", 
         ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        zlim = c(Eimb_min, Eimb_max),
         mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6, xaxt = "n")
 axis(1, c(1, 5, 10, 15, 20), cex.axis = 1.4, mgp=c(2.3,0.7,0))
 rect(weight_min, Ta_brooder_min, weight_max, Ta_brooder_max, lty = 2, lwd = 3)
@@ -1160,6 +1198,7 @@ image2D(supplemental_heat_Ta_brooderAddedInc$min_power_median_real, contour = li
         colkey = FALSE, x = supplemental_heat_Ta_brooderAddedInc$weights, y = supplemental_heat_Ta_brooderAddedInc$Ta_pen_surface_initial, 
         xlab = "Weight (kg)", 
         ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        zlim = c(Hopt_min, Hopt_max),
         mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6, xaxt = "n")
 axis(1, c(1, 5, 10, 15, 20), cex.axis = 1.4, mgp=c(2.3,0.7,0))
 rect(weight_min, Ta_brooder_min, weight_max, Ta_brooder_max, lty = 2, lwd = 3)
@@ -1169,6 +1208,7 @@ image2D(supplemental_heat_Ta_brooderAddedInc$min_val_median_neg_abs_filt, contou
         colkey = FALSE, x = supplemental_heat_Ta_brooderAddedInc$weights, y = supplemental_heat_Ta_brooderAddedInc$Ta_pen_surface_initial, 
         xlab = "Weight (kg)", 
         ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        zlim = c(Eimb_min, Eimb_max),
         mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6, xaxt = "n")
 axis(1, c(1, 5, 10, 15, 20), cex.axis = 1.4, mgp=c(2.3,0.7,0))
 rect(weight_min, Ta_brooder_min, weight_max, Ta_brooder_max, lty = 2, lwd = 3)
@@ -1180,6 +1220,7 @@ image2D(supplemental_heat_Ta_brooderAddedInc$min_power_upper_real, contour = lis
         colkey = FALSE, x = supplemental_heat_Ta_brooderAddedInc$weights, y = supplemental_heat_Ta_brooderAddedInc$Ta_pen_surface_initial, 
         xlab = "Weight (kg)", 
         ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        zlim = c(Hopt_min, Hopt_max),
         mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6, xaxt = "n")
 axis(1, c(1, 5, 10, 15, 20), cex.axis = 1.4, mgp=c(2.3,0.7,0))
 rect(weight_min, Ta_brooder_min, weight_max, Ta_brooder_max, lty = 2, lwd = 3)
@@ -1189,6 +1230,7 @@ image2D(supplemental_heat_Ta_brooderAddedInc$min_val_upper_neg_abs_filt, contour
         colkey = FALSE, x = supplemental_heat_Ta_brooderAddedInc$weights, y = supplemental_heat_Ta_brooderAddedInc$Ta_pen_surface_initial, 
         xlab = "Weight (kg)", 
         ylab = expression(paste("Air temperature ("^{o},"C)", sep = "")),
+        zlim = c(Eimb_min, Eimb_max),
         mgp=c(2.3,0.7,0), cex.axis = 1.4, cex.lab = 1.6, xaxt = "n")
 axis(1, c(1, 5, 10, 15, 20), cex.axis = 1.4, mgp=c(2.3,0.7,0))
 rect(weight_min, Ta_brooder_min, weight_max, Ta_brooder_max, lty = 2, lwd = 3)
@@ -1261,8 +1303,74 @@ lines(supplemental_heat_Ta_brooderAddedInc$weights, BB.Tideal - 2, lwd = lwd.min
 
 # Lower limit for thermoneutral zone is 34-35 oC, 30-35 oC, and 25-30 oC for piglets weighting 1-2 kg, 2-4 kg, and 4-8 kg, respectively. # Mount (1960)
 
-legend(6.2, 42.5, c("This paper", "Mount (1960)", "Harmon and Xin (1995)", "Brown-Brandl et al. (2004)"), lwd = 4, lty = c(lty.mine, lty.Mount, lty.Xin, lty.BB), col = c(color.mine, color.Mount, color.Xin, color.BB), cex = 1.4, xpd = NA) # will issue a warning. That's fine. It is complaining that I'm asking it to give me 2 columns but the number of lengeds I have is not a multiple of 2.
-#rect(3, 37.5, 18, 42.4, xpd = NA) # couldn't get a box nicely looking for the legend. Making one myself
+legend(6.2, 42.5, c("This paper", "Mount (1960)", "Harmon and Xin (1995)", "Brown-Brandl et al. (2004)"), lwd = 4, lty = c(lty.mine, lty.Mount, lty.Xin, lty.BB), col = c(color.mine, color.Mount, color.Xin, color.BB), cex = 1.4, xpd = NA)
+```
+
+```{r}
+# obtaining thermoneutral zones
+Ta_neutral_Ta_brooderAddedInc_lower  = rep(-Inf, length.out = length(supplemental_heat_Ta_brooderAddedInc$weights))
+Ta_neutral_Ta_brooderAddedInc_mean   = rep(-Inf, length.out = length(supplemental_heat_Ta_brooderAddedInc$weights))
+Ta_neutral_Ta_brooderAddedInc_median = rep(-Inf, length.out = length(supplemental_heat_Ta_brooderAddedInc$weights))
+Ta_neutral_Ta_brooderAddedInc_upper  = rep(-Inf, length.out = length(supplemental_heat_Ta_brooderAddedInc$weights))
+for (i1 in 1:length(supplemental_heat_Ta_brooderAddedInc$weights)){
+  Ta_neutral_Ta_brooderAddedInc_lower[i1]  = supplemental_heat_Ta_brooderAddedInc$Ta_pen_surface_initial[
+    max(which(supplemental_heat_Ta_brooderAddedInc$min_val_lower_neg_abs_filt[i1,] == 0))
+  ]
+  Ta_neutral_Ta_brooderAddedInc_mean[i1]   = supplemental_heat_Ta_brooderAddedInc$Ta_pen_surface_initial[
+    max(which(supplemental_heat_Ta_brooderAddedInc$min_val_mean_neg_abs_filt[i1,] == 0))
+  ] 
+  Ta_neutral_Ta_brooderAddedInc_median[i1] = supplemental_heat_Ta_brooderAddedInc$Ta_pen_surface_initial[
+    max(which(supplemental_heat_Ta_brooderAddedInc$min_val_median_neg_abs_filt[i1,] == 0))
+  ]
+  Ta_neutral_Ta_brooderAddedInc_upper[i1]  = supplemental_heat_Ta_brooderAddedInc$Ta_pen_surface_initial[
+    max(which(supplemental_heat_Ta_brooderAddedInc$min_val_upper_neg_abs_filt[i1,] == 0))
+  ]
+}
+
+Xin_Temps_lower  = ( c( 90, 86, 84, 83, 80, 78, 76, 73, 70, 68, 66,  64,  62,  60,  58,  56,  56,  56,  54,  54,  52,  52) - 32 )/1.8
+Xin_Temps_upper  = ( c( 95, 88, 88, 86, 86, 84, 84, 82, 82, 80, 80,  80,  80,  80,  80,  80,  80,  80,  80,  80,  80,  80) - 32 )/1.8
+Xin_Temps_weight = ( c(2.2, 12, 16, 20, 24, 30, 38, 46, 56, 68, 80, 92, 104, 116, 128, 141, 155, 171, 187, 215, 240, 260) )/2.20462
+# they first weight point is "at birth." I'm assuming it is 1kg
+
+BB.Tideal = 0.0015*supplemental_heat_Ta_brooderAddedInc$weights^2 - 0.2969*supplemental_heat_Ta_brooderAddedInc$weights + 30.537
+
+color.mine = "springgreen4"
+color.Xin = "royalblue4"
+color.Mount = "darkslategray"
+color.BB = "tomato4"
+
+lty.mine = 1
+lty.Xin = 3
+lty.Mount = 4
+lty.BB = 2
+
+lwd.mine.CI = 2.5
+lwd.mine = 4
+lwd.others = 4
+
+plot(supplemental_heat_Ta_brooderAddedInc$weights, Ta_neutral_Ta_brooderAddedInc_mean, type = 'l', ylim = c(14, 36), col = color.mine, lty = lty.mine, xaxs = "i", xaxt = "n",
+     ylab = expression(paste("Temperature ("^{o},"C)", sep = "")), mgp=c(2.3,0.7,0), xlab = "Weight (kg)", cex.axis = 1.4, cex.lab = 1.6, lwd = lwd.mine)
+axis(1, c(1, 5, 10, 15, 20), cex.axis = 1.4, mgp=c(2.3,0.7,0))
+grid()
+lines(supplemental_heat_Ta_brooderAddedInc$weights, Ta_neutral_Ta_brooderAddedInc_lower, col = color.mine, lty = lty.mine, lwd = lwd.mine.CI)
+lines(supplemental_heat_Ta_brooderAddedInc$weights, Ta_neutral_Ta_brooderAddedInc_mean, col = color.mine, lty = lty.mine, lwd = lwd.mine)
+lines(supplemental_heat_Ta_brooderAddedInc$weights, Ta_neutral_Ta_brooderAddedInc_upper, col = color.mine, lty = lty.mine, lwd = lwd.mine.CI)
+# rect(weight_min, Ta_brooder_min, weight_max, Ta_brooder_max, lty = 2, lwd = 1.5)
+
+# ploting Xin values
+lines(Xin_Temps_weight, Xin_Temps_upper, lwd = lwd.others, lty = lty.Xin, col = color.Xin)
+lines(Xin_Temps_weight, Xin_Temps_lower, lwd = lwd.others, lty = lty.Xin, col = color.Xin)
+# Mount (1960)
+# lines(c(1, 2, 2, 4, 4, 8), c(35, 35, 35, 35, 30, 30), lwd = lwd.others, lty = lty.Mount, col = color.Mount)
+# lines(c(1, 2, 2, 4, 4, 8), c(34, 34, 30, 30, 25, 25), lwd = lwd.others, lty = lty.Mount, col = color.Mount)
+# Brown-Brandl et al. (2004)
+lines(supplemental_heat_Ta_brooderAddedInc$weights, BB.Tideal, lwd = lwd.others, lty = lty.BB, col = color.BB)
+# lines(supplemental_heat_Ta_brooderAddedInc$weights, BB.Tideal + 2, lwd = lwd.mine.CI, lty = lty.BB, col = color.BB)
+# lines(supplemental_heat_Ta_brooderAddedInc$weights, BB.Tideal - 2, lwd = lwd.mine.CI, lty = lty.BB, col = color.BB)
+
+# Lower limit for thermoneutral zone is 34-35 oC, 30-35 oC, and 25-30 oC for piglets weighting 1-2 kg, 2-4 kg, and 4-8 kg, respectively. # Mount (1960)
+
+legend(4, 42.5, c("This paper", "Harmon and Xin (1995)", "Brown-Brandl et al. (2004)"), lwd = 4, lty = c(lty.mine, lty.Xin, lty.BB), col = c(color.mine, color.Xin, color.BB), cex = 1.4, xpd = NA)
 ```
 
 ```{r}
