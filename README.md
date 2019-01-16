@@ -21,4 +21,4 @@ See the file example.m for an example on how to obtain predictions using our mat
 This GitHub repository contains the code. For the input dataset and processed data, please see our [Open Science Framework project](https://osf.io/fsqxj/ "Data for mechanistic modeling of bio-heat transfer of piglets).
 
 ### Refereces
-Milan HFM, Maia ASC, Gebremedhin KG. Prediction of optimum supplemental heat for piglets. Submitted to Trans ASABE, 2018.
+Milan HFM, Maia ASC, Gebremedhin KG. Prediction of optimum supplemental heat for piglets. Trans ASABE accepted, 2019.
