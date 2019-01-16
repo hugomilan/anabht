@@ -18,7 +18,7 @@ This code was written in [Octave](https://www.gnu.org/software/octave/ "Octave w
 
 See the file example.m for an example on how to obtain predictions using our mathematical framework. Using this example code, you can obtain predictions (pointwise and standard deviations) of skin-surface temperature, skin-surface heat flux, and hair-coat surface temperature. Predictions of the optimum supplemental heat are also possible by using other functions of this code.
 
-This GitHub repository contains the code. For the input dataset and processed data, please see our [Open Science Framework project](https://osf.io/fsqxj/ "Data for mechanistic modeling of bio-heat transfer of piglets).
+This GitHub repository contains the code. For the input dataset and processed data, please see our [Open Science Framework project](https://osf.io/fsqxj/ "Data for mechanistic modeling of bio-heat transfer of piglets").
 
 ### Refereces
 Milan HFM, Maia ASC, Gebremedhin KG. Prediction of optimum supplemental heat for piglets. Trans ASABE accepted, 2019.
